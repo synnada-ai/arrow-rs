@@ -1,3 +1,27 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+//! Async CSV Writer
+//!
+//! This CSV writer allows Arrow data (in record batches) to be written as CSV files leveraging
+//! tokio::AsyncWrite trait.
+//! The writer does not support writing `ListArray` and `StructArray`.
+//!
+
 use crate::map_async_csv_error;
 use crate::writers::{
     get_converters, get_header, DEFAULT_DATE_FORMAT, DEFAULT_NULL_VALUE,
@@ -9,7 +33,7 @@ use arrow_schema::ArrowError;
 use csv_async::ByteRecord;
 use tokio::io::AsyncWrite;
 
-/// A CSV writer
+/// A Async CSV writer
 #[derive(Debug)]
 pub struct AsyncWriter<W: AsyncWrite + Unpin + Send> {
     /// The object to write to
@@ -144,7 +168,7 @@ impl Default for AsyncWriterBuilder {
 impl AsyncWriterBuilder {
     /// Create a new builder for configuring CSV writing options.
     ///
-    /// To convert a builder into a writer, call `WriterBuilder::build`
+    /// To convert a builder into a writer, call `AsyncWriterBuilder::build`
     ///
     /// # Example
     ///

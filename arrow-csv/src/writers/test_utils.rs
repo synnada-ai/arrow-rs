@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//! Test utilities for sync and async writers.
+
 use crate::Reader;
 use arrow_array::builder::{Decimal128Builder, Decimal256Builder};
 use arrow_array::types::{Float64Type, Int32Type, UInt32Type};
