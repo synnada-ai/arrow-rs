@@ -18,13 +18,15 @@
 //! Transfer data between the Arrow memory format and CSV (comma-separated values).
 
 pub mod reader;
-pub mod writer;
+pub mod writers;
 
 pub use self::reader::infer_schema_from_files;
 pub use self::reader::Reader;
 pub use self::reader::ReaderBuilder;
-pub use self::writer::Writer;
-pub use self::writer::WriterBuilder;
+pub use self::writers::AsyncWriter;
+pub use self::writers::AsyncWriterBuilder;
+pub use self::writers::Writer;
+pub use self::writers::WriterBuilder;
 use arrow_schema::ArrowError;
 
 fn map_csv_error(error: csv::Error) -> ArrowError {
@@ -34,6 +36,22 @@ fn map_csv_error(error: csv::Error) -> ArrowError {
             "Encountered UTF-8 error while reading CSV file: {err}"
         )),
         csv::ErrorKind::UnequalLengths {
+            expected_len, len, ..
+        } => ArrowError::CsvError(format!(
+            "Encountered unequal lengths between records on CSV file. Expected {len} \
+                 records, found {expected_len} records"
+        )),
+        _ => ArrowError::CsvError("Error reading CSV file".to_string()),
+    }
+}
+
+fn map_async_csv_error(error: csv_async::Error) -> ArrowError {
+    match error.kind() {
+        csv_async::ErrorKind::Io(error) => ArrowError::CsvError(error.to_string()),
+        csv_async::ErrorKind::Utf8 { pos: _, err } => ArrowError::CsvError(format!(
+            "Encountered UTF-8 error while reading CSV file: {err}"
+        )),
+        csv_async::ErrorKind::UnequalLengths {
             expected_len, len, ..
         } => ArrowError::CsvError(format!(
             "Encountered unequal lengths between records on CSV file. Expected {len} \

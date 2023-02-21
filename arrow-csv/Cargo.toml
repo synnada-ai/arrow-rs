@@ -45,6 +45,8 @@ arrow-data = { version = "33.0.0", path = "../arrow-data" }
 arrow-schema = { version = "33.0.0", path = "../arrow-schema" }
 chrono = { version = "0.4.23", default-features = false, features = ["clock"] }
 csv = { version = "1.1", default-features = false }
+csv-async = {version = "1.2.5", features = ["tokio"]}
+tokio = { version = "1.0", default-features = false, features = ["macros", "rt", "fs"] }
 csv-core = { version = "0.1"}
 lazy_static = { version = "1.4", default-features = false }
 lexical-core = { version = "^0.8", default-features = false }
@@ -52,3 +54,5 @@ regex = { version = "1.7.0", default-features = false, features = ["std", "unico
 
 [dev-dependencies]
 tempfile = "3.3"
+async-tempfile = "0.2.0"
+futures = { version = "0.3", default-features = false, features = ["std"] }
