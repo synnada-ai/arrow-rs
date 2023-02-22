@@ -15,10 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-mod async_writer;
+pub mod async_writer;
 #[cfg(test)]
 mod test_utils;
-mod writer;
+pub mod writer;
 
 use arrow_array::RecordBatch;
 use arrow_cast::display::{ArrayFormatter, FormatOptions};
