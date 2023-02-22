@@ -276,7 +276,8 @@ mod tests {
     use arrow_array::{Date32Array, Date64Array, TimestampNanosecondArray, UInt32Array};
     use arrow_schema::{DataType, Field, Schema, TimeUnit};
     use std::sync::Arc;
-    use tokio::io::{AsyncReadExt, AsyncSeekExt};
+    use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+    use crate::Writer;
 
     #[tokio::test]
     async fn test_writer() -> Result<(), ArrowError> {
@@ -334,6 +335,31 @@ mod tests {
             writer.write(&batch).await?;
         }
         drop(writer);
+
+        // check that file was written successfully
+        file.seek(SeekFrom::Start(0)).await?;
+        let mut buffer: Vec<u8> = vec![];
+        file.read_to_end(&mut buffer).await.unwrap();
+        assert_eq!(expected, String::from_utf8(buffer).unwrap());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write_csv_2() -> Result<(), ArrowError> {
+        let (batches, expected) = test_write_csv_case()?;
+        let mut file = async_tempfile::TempFile::new().await.unwrap();
+        let mut buffered_output = tokio::io::BufWriter::new(file);
+        let mut buf = Vec::new();
+        // Probably replace will work.
+        for (i, batch) in batches.iter().enumerate() {
+            let mut writer = Writer::new_with_header(&mut buf, i == 0);
+            writer.write(&batch).unwrap();
+            let buf = writer.get_mut_buf().unwrap();
+            buffered_output.write_all(&buf).await.unwrap();
+            buffered_output.flush().await.unwrap();
+            buf.clear()
+        }
+        let mut file = buffered_output.into_inner();
 
         // check that file was written successfully
         file.seek(SeekFrom::Start(0)).await?;

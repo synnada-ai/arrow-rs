@@ -66,7 +66,7 @@
 use arrow_array::*;
 use arrow_cast::display::*;
 use arrow_schema::*;
-use csv::ByteRecord;
+use csv::{ByteRecord, IntoInnerError};
 use std::io::Write;
 
 use crate::map_csv_error;
@@ -117,6 +117,28 @@ impl<W: Write> Writer<W> {
         }
     }
 
+    /// Create a new CsvWriter from a writable object, with default options
+    pub fn new_with_header(writer: W, has_headers: bool) -> Self {
+        let delimiter = b',';
+        let mut builder = csv::WriterBuilder::new();
+        let writer = builder.delimiter(delimiter).from_writer(writer);
+        Writer {
+            writer,
+            has_headers,
+            date_format: Some(DEFAULT_DATE_FORMAT.to_string()),
+            datetime_format: Some(DEFAULT_TIMESTAMP_FORMAT.to_string()),
+            time_format: Some(DEFAULT_TIME_FORMAT.to_string()),
+            timestamp_format: Some(DEFAULT_TIMESTAMP_FORMAT.to_string()),
+            timestamp_tz_format: Some(DEFAULT_TIMESTAMP_TZ_FORMAT.to_string()),
+            beginning: true,
+            null_value: DEFAULT_NULL_VALUE.to_string(),
+        }
+    }
+
+    pub fn get_mut_buf(mut self) -> Result<W, IntoInnerError<csv::Writer<W>>> {
+        self.writer.into_inner()
+    }
+
     /// Write a vector of record batches to a writable object
     pub fn write(&mut self, batch: &RecordBatch) -> Result<(), ArrowError> {
         if self.beginning {
@@ -161,7 +183,6 @@ impl<W: Write> Writer<W> {
                 .map_err(map_csv_error)?;
         }
         self.writer.flush()?;
-
         Ok(())
     }
 }
@@ -311,6 +332,7 @@ mod tests {
     };
     use std::io::{Cursor, Read, Seek};
     use std::sync::Arc;
+    use tokio::io::AsyncWriteExt;
 
     #[test]
     fn test_write_csv() -> Result<(), ArrowError> {
