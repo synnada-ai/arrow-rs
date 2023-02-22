@@ -23,10 +23,10 @@ pub mod writers;
 pub use self::reader::infer_schema_from_files;
 pub use self::reader::Reader;
 pub use self::reader::ReaderBuilder;
-pub use self::writers::AsyncWriter;
-pub use self::writers::AsyncWriterBuilder;
-pub use self::writers::Writer;
-pub use self::writers::WriterBuilder;
+pub use self::writers::async_writer::AsyncWriter;
+pub use self::writers::async_writer::AsyncWriterBuilder;
+pub use self::writers::writer::Writer;
+pub use self::writers::writer::WriterBuilder;
 use arrow_schema::ArrowError;
 
 fn map_csv_error(error: csv::Error) -> ArrowError {
