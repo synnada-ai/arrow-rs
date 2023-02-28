@@ -281,6 +281,10 @@ pub trait ObjectStore: std::fmt::Display + Send + Sync + Debug + 'static {
     /// Save the provided bytes to the specified location.
     async fn put(&self, location: &Path, bytes: Bytes) -> Result<()>;
 
+    async fn append(&self, location: &Path, bytes: &Bytes) -> Result<()>{
+        Ok(())
+    }
+
     /// Get a multi-part upload that allows writing data in chunks
     ///
     /// Most cloud-based uploads will buffer and upload parts in parallel.

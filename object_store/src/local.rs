@@ -29,13 +29,14 @@ use futures::{stream::BoxStream, StreamExt};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
 use std::fs::{metadata, symlink_metadata, File};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::ops::Range;
+use std::ops::{Deref, Range};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 use std::{collections::BTreeSet, convert::TryFrom, io};
 use std::{collections::VecDeque, path::PathBuf};
-use tokio::io::AsyncWrite;
+use tokio::fs::OpenOptions;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 use url::Url;
 use walkdir::{DirEntry, WalkDir};
 
@@ -264,16 +265,25 @@ impl Config {
 impl ObjectStore for LocalFileSystem {
     async fn put(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let path = self.config.path_to_filesystem(location)?;
-
+        let mut file = open_writable_file(&path)?;
         maybe_spawn_blocking(move || {
-            let mut file = open_writable_file(&path)?;
-
             file.write_all(&bytes)
                 .context(UnableToCopyDataToFileSnafu)?;
 
             Ok(())
         })
         .await
+    }
+
+    async fn append(&self, location: &Path, bytes: &Bytes) -> Result<()> {
+        let mut options = OpenOptions::new();
+        // For fair comparison
+        options.write(true).truncate(true).create(true);
+        let path = self.config.path_to_filesystem(location)?;
+        let mut file = open_writable_async_file(&path, &options).await?;
+        file.write_all(bytes).await
+            .context(UnableToCopyDataToFileSnafu)?;
+        Ok(())
     }
 
     async fn put_multipart(
@@ -829,6 +839,33 @@ fn open_writable_file(path: &PathBuf) -> Result<File> {
     }
 }
 
+async fn open_writable_async_file(path: &PathBuf, options: &OpenOptions) -> Result<tokio::fs::File> {
+    match options.open(path).await {
+        Ok(f) => Ok(f),
+        Err(err) if err.kind() == tokio::io::ErrorKind::NotFound => {
+            let parent = path
+                .parent()
+                .context(UnableToCreateFileSnafu { path: &path, err })?;
+            std::fs::create_dir_all(parent)
+                .context(UnableToCreateDirSnafu { path: parent })?;
+
+            match options.open(path).await {
+                Ok(f) => Ok(f),
+                Err(err) => Err(Error::UnableToCreateFile {
+                    path: path.to_path_buf(),
+                    err,
+                }
+                    .into()),
+            }
+        }
+        Err(err) => Err(Error::UnableToCreateFile {
+            path: path.to_path_buf(),
+            err,
+        }
+            .into()),
+    }
+}
+
 fn convert_entry(entry: DirEntry, location: Path) -> Result<ObjectMeta> {
     let metadata = entry
         .metadata()
@@ -953,7 +990,7 @@ mod tests {
         let data = Bytes::from("arbitrary data");
         let expected_data = data.clone();
 
-        integration.put(&location, data).await.unwrap();
+        integration.append(&location, &data).await.unwrap();
 
         let read_data = integration
             .get(&location)
@@ -975,7 +1012,7 @@ mod tests {
         let data = Bytes::from("arbitrary data");
         let expected_data = data.clone();
 
-        integration.put(&location, data).await.unwrap();
+        integration.append(&location, &data).await.unwrap();
 
         let read_data = integration
             .get(&location)
@@ -1194,7 +1231,7 @@ mod tests {
 
         // Adding a file through a symlink creates in both paths
         integration
-            .put(&Path::from("b/file.parquet"), Bytes::from(vec![0, 1, 2]))
+            .append(&Path::from("b/file.parquet"), &Bytes::from(vec![0, 1, 2]))
             .await
             .unwrap();
 
@@ -1213,7 +1250,7 @@ mod tests {
         let directory = Path::from("directory");
         let object = directory.child("child.txt");
         let data = Bytes::from("arbitrary");
-        integration.put(&object, data.clone()).await.unwrap();
+        integration.append(&object, &data).await.unwrap();
         integration.head(&object).await.unwrap();
         let result = integration.get(&object).await.unwrap();
         assert_eq!(result.bytes().await.unwrap(), data);
