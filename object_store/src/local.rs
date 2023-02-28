@@ -24,10 +24,10 @@ use crate::{
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::future::BoxFuture;
-use futures::FutureExt;
 use futures::{stream::BoxStream, StreamExt};
+use futures::{FutureExt, Stream};
 use snafu::{ensure, OptionExt, ResultExt, Snafu};
-use std::fs::{metadata, symlink_metadata, File};
+use std::fs::{metadata, symlink_metadata, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::ops::Range;
 use std::pin::Pin;
@@ -264,16 +264,35 @@ impl Config {
 impl ObjectStore for LocalFileSystem {
     async fn put(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let path = self.config.path_to_filesystem(location)?;
-
+        let mut options = OpenOptions::new();
+        options.write(true).truncate(true).create(true);
         maybe_spawn_blocking(move || {
-            let mut file = open_writable_file(&path)?;
-
+            let mut file = open_writable_file(&path, &options)?;
             file.write_all(&bytes)
                 .context(UnableToCopyDataToFileSnafu)?;
-
             Ok(())
         })
         .await
+    }
+
+    async fn append(
+        &self,
+        location: &Path,
+        mut bytes: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin>,
+    ) -> Result<()> {
+        let path = self.config.path_to_filesystem(location)?;
+        let mut options = OpenOptions::new();
+        options.write(true).truncate(false).create(true);
+        let mut file = open_writable_file(&path, &options)?;
+        while let Some(chunk) = bytes.next().await {
+            file = maybe_spawn_blocking(move || {
+                file.write_all(&chunk?)
+                    .context(UnableToCopyDataToFileSnafu)?;
+                Ok(file)
+            })
+            .await?
+        }
+        Ok(())
     }
 
     async fn put_multipart(
@@ -298,8 +317,9 @@ impl ObjectStore for LocalFileSystem {
             }
         };
         let multipart_id = multipart_id.to_string();
-
-        let file = open_writable_file(&staging_path)?;
+        let mut options = OpenOptions::new();
+        options.write(true).truncate(true).create(true);
+        let file = open_writable_file(&staging_path, &options)?;
 
         Ok((
             multipart_id.clone(),
@@ -802,8 +822,8 @@ fn open_file(path: &PathBuf) -> Result<File> {
     Ok(file)
 }
 
-fn open_writable_file(path: &PathBuf) -> Result<File> {
-    match File::create(path) {
+fn open_writable_file(path: &PathBuf, options: &OpenOptions) -> Result<File> {
+    match options.open(path) {
         Ok(f) => Ok(f),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
             let parent = path
@@ -812,7 +832,7 @@ fn open_writable_file(path: &PathBuf) -> Result<File> {
             std::fs::create_dir_all(parent)
                 .context(UnableToCreateDirSnafu { path: parent })?;
 
-            match File::create(path) {
+            match options.open(path) {
                 Ok(f) => Ok(f),
                 Err(err) => Err(Error::UnableToCreateFile {
                     path: path.to_path_buf(),
@@ -966,6 +986,65 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn creates_dir_if_not_present_append() {
+        let root = TempDir::new().unwrap();
+        let integration = LocalFileSystem::new_with_prefix(root.path()).unwrap();
+
+        let location = Path::from("nested/file/test_file");
+
+        let data = Bytes::from("arbitrary data");
+        let expected_data = data.clone();
+
+        let stream: BoxStream<'static, Result<Bytes>> =
+            futures::stream::once(async { Ok(data) }).boxed();
+        let boxed_dyn_stream: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin> =
+            Box::new(stream);
+
+        integration
+            .append(&location, boxed_dyn_stream)
+            .await
+            .unwrap();
+
+        let read_data = integration
+            .get(&location)
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+        assert_eq!(&*read_data, expected_data);
+    }
+
+    #[tokio::test]
+    async fn unknown_length_append() {
+        let root = TempDir::new().unwrap();
+        let integration = LocalFileSystem::new_with_prefix(root.path()).unwrap();
+
+        let location = Path::from("some_file");
+
+        let data = Bytes::from("arbitrary data");
+        let expected_data = data.clone();
+        let stream: BoxStream<'static, Result<Bytes>> =
+            futures::stream::once(async { Ok(data) }).boxed();
+        let boxed_dyn_stream: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin> =
+            Box::new(stream);
+
+        integration
+            .append(&location, boxed_dyn_stream)
+            .await
+            .unwrap();
+
+        let read_data = integration
+            .get(&location)
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+        assert_eq!(&*read_data, expected_data);
+    }
+
+    #[tokio::test]
     async fn unknown_length() {
         let root = TempDir::new().unwrap();
         let integration = LocalFileSystem::new_with_prefix(root.path()).unwrap();
@@ -976,6 +1055,39 @@ mod tests {
         let expected_data = data.clone();
 
         integration.put(&location, data).await.unwrap();
+
+        let read_data = integration
+            .get(&location)
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
+        assert_eq!(&*read_data, expected_data);
+    }
+
+    #[tokio::test]
+    async fn multiple_append() {
+        let root = TempDir::new().unwrap();
+        let integration = LocalFileSystem::new_with_prefix(root.path()).unwrap();
+
+        let location = Path::from("some_file");
+
+        let data = vec![
+            Ok(Bytes::from("arbitrary")),
+            Ok(Bytes::from("data")),
+            Ok(Bytes::from("gnz")),
+        ];
+        let expected_data = Bytes::from("arbitrarydatagnz");
+        let stream: BoxStream<'static, Result<Bytes>> =
+            futures::stream::iter(data).boxed();
+        let boxed_dyn_stream: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin> =
+            Box::new(stream);
+
+        integration
+            .append(&location, boxed_dyn_stream)
+            .await
+            .unwrap();
 
         let read_data = integration
             .get(&location)

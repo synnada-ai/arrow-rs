@@ -258,7 +258,7 @@ use crate::util::{coalesce_ranges, collect_bytes, OBJECT_STORE_COALESCE_DEFAULT}
 use async_trait::async_trait;
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
-use futures::{stream::BoxStream, StreamExt};
+use futures::{stream::BoxStream, Stream, StreamExt};
 use snafu::Snafu;
 use std::fmt::{Debug, Formatter};
 #[cfg(not(target_arch = "wasm32"))]
@@ -280,6 +280,15 @@ pub type MultipartId = String;
 pub trait ObjectStore: std::fmt::Display + Send + Sync + Debug + 'static {
     /// Save the provided bytes to the specified location.
     async fn put(&self, location: &Path, bytes: Bytes) -> Result<()>;
+
+    /// Append the provided byte stream to the specified location.
+    async fn append(
+        &self,
+        _location: &Path,
+        _bytes: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin>,
+    ) -> Result<()> {
+        Err(Error::NotImplemented)
+    }
 
     /// Get a multi-part upload that allows writing data in chunks
     ///
