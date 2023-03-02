@@ -282,7 +282,7 @@ impl ObjectStore for LocalFileSystem {
     ) -> Result<()> {
         let path = self.config.path_to_filesystem(location)?;
         let mut options = OpenOptions::new();
-        options.write(true).truncate(true).create(true);
+        options.write(true).truncate(false).create(true);
         let mut file = open_writable_file(&path, &options)?;
         while let Some(chunk) = bytes.next().await {
             file = maybe_spawn_blocking(move || {
