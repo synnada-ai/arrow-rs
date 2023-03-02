@@ -278,15 +278,15 @@ impl ObjectStore for LocalFileSystem {
     async fn append(
         &self,
         location: &Path,
-        mut bytes: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin>,
+        mut bytes: Box<dyn Stream<Item = Bytes> + Send + Unpin>,
     ) -> Result<()> {
         let path = self.config.path_to_filesystem(location)?;
         let mut options = OpenOptions::new();
-        options.write(true).truncate(false).create(true);
+        options.write(true).truncate(true).create(true);
         let mut file = open_writable_file(&path, &options)?;
         while let Some(chunk) = bytes.next().await {
             file = maybe_spawn_blocking(move || {
-                file.write_all(&chunk?)
+                file.write_all(&chunk)
                     .context(UnableToCopyDataToFileSnafu)?;
                 Ok(file)
             })
@@ -995,9 +995,9 @@ mod tests {
         let data = Bytes::from("arbitrary data");
         let expected_data = data.clone();
 
-        let stream: BoxStream<'static, Result<Bytes>> =
-            futures::stream::once(async { Ok(data) }).boxed();
-        let boxed_dyn_stream: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin> =
+        let stream: BoxStream<'static, Bytes> =
+            futures::stream::once(async { data }).boxed();
+        let boxed_dyn_stream: Box<dyn Stream<Item = Bytes> + Send + Unpin> =
             Box::new(stream);
 
         integration
@@ -1024,9 +1024,9 @@ mod tests {
 
         let data = Bytes::from("arbitrary data");
         let expected_data = data.clone();
-        let stream: BoxStream<'static, Result<Bytes>> =
-            futures::stream::once(async { Ok(data) }).boxed();
-        let boxed_dyn_stream: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin> =
+        let stream: BoxStream<'static, Bytes> =
+            futures::stream::once(async { data }).boxed();
+        let boxed_dyn_stream: Box<dyn Stream<Item = Bytes> + Send + Unpin> =
             Box::new(stream);
 
         integration
@@ -1074,14 +1074,14 @@ mod tests {
         let location = Path::from("some_file");
 
         let data = vec![
-            Ok(Bytes::from("arbitrary")),
-            Ok(Bytes::from("data")),
-            Ok(Bytes::from("gnz")),
+            Bytes::from("arbitrary"),
+            Bytes::from("data"),
+            Bytes::from("gnz"),
         ];
         let expected_data = Bytes::from("arbitrarydatagnz");
-        let stream: BoxStream<'static, Result<Bytes>> =
+        let stream: BoxStream<'static, Bytes> =
             futures::stream::iter(data).boxed();
-        let boxed_dyn_stream: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin> =
+        let boxed_dyn_stream: Box<dyn Stream<Item = Bytes> + Send + Unpin> =
             Box::new(stream);
 
         integration

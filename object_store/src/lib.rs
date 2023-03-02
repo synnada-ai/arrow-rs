@@ -285,7 +285,7 @@ pub trait ObjectStore: std::fmt::Display + Send + Sync + Debug + 'static {
     async fn append(
         &self,
         _location: &Path,
-        _bytes: Box<dyn Stream<Item = Result<Bytes>> + Send + Unpin>,
+        _bytes: Box<dyn Stream<Item = Bytes> + Send + Unpin>,
     ) -> Result<()> {
         Err(Error::NotImplemented)
     }
