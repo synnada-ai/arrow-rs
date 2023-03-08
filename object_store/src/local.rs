@@ -320,7 +320,7 @@ impl ObjectStore for LocalFileSystem {
         let path = self.config.path_to_filesystem(location)?;
         let mut options = OpenOptions::new();
         options.write(true).create(true).truncate(false);
-        let file = open_file_with_options(&options, &path)?;
+        let file = open_file_with_options(&options, path)?;
         Ok(Box::new(LocalUpload::new(Arc::new(file))))
     }
 
@@ -554,14 +554,14 @@ impl ObjectStore for LocalFileSystem {
     }
 }
 
-fn open_file_with_options(options: &OpenOptions, path: &PathBuf) -> Result<File> {
+fn open_file_with_options(options: &OpenOptions, path: PathBuf) -> Result<File> {
     loop {
-        match options.open(path) {
+        match options.open(&path) {
             Ok(f) => return Ok(f),
             Err(err) if err.kind() == ErrorKind::NotFound => {
-                let parent = path
+                let parent = &path
                     .parent()
-                    .context(UnableToCreateFileSnafu { path, err })?;
+                    .context(UnableToCreateFileSnafu { path: &path, err })?;
 
                 std::fs::create_dir_all(parent)
                     .context(UnableToCreateDirSnafu { path: parent })?;
@@ -579,7 +579,7 @@ fn open_file_with_options(options: &OpenOptions, path: &PathBuf) -> Result<File>
             Err(source) => {
                 return Err(Error::UnableToOpenFile {
                     source,
-                    path: path.clone(),
+                    path,
                 }
                 .into())
             }
@@ -597,7 +597,7 @@ fn new_staged_upload(base: &std::path::Path) -> Result<(File, String)> {
     loop {
         let suffix = multipart_id.to_string();
         let path = staged_upload_path(base, &suffix);
-        match open_file_with_options(&options, &path) {
+        match open_file_with_options(&options, path) {
             Ok(file) => return Ok((file, suffix)),
             Err(super::Error::AlreadyExists { .. }) => {
                 multipart_id += 1;
@@ -693,14 +693,14 @@ impl AsyncWrite for LocalUpload {
                         );
                     }
                     LocalUploadState::Writing(file, inner_write) => {
-                        match inner_write.poll_unpin(cx) {
+                        return match inner_write.poll_unpin(cx) {
                             Poll::Ready(res) => {
                                 self.inner_state =
                                     LocalUploadState::Idle(Arc::clone(file));
-                                return Poll::Ready(res);
+                                Poll::Ready(res)
                             }
                             Poll::Pending => {
-                                return Poll::Pending;
+                                Poll::Pending
                             }
                         }
                     }
