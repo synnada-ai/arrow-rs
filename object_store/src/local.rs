@@ -292,7 +292,7 @@ impl ObjectStore for LocalFileSystem {
         let (file, suffix) = new_staged_upload(&dest)?;
         Ok((
             suffix.clone(),
-            Box::new(LocalUpload::new(dest, suffix, Arc::new(file))),
+            Box::new(LocalUpload::new(Arc::new(file)).with_staging(dest, suffix)),
         ))
     }
 
@@ -318,42 +318,10 @@ impl ObjectStore for LocalFileSystem {
     ) -> Result<Box<dyn AsyncWrite + Unpin + Send>> {
         // Get the path to the file from the configuration.
         let path = self.config.path_to_filesystem(location)?;
-        loop {
-            // Create new `OpenOptions`.
-            let mut options = tokio::fs::OpenOptions::new();
-
-            // Attempt to open the file with the given options.
-            match options
-                .write(true)
-                .truncate(false)
-                .create(true)
-                .open(&path)
-                .await
-            {
-                // If the file was successfully opened, return it wrapped in a boxed `AsyncWrite` trait object.
-                Ok(file) => return Ok(Box::new(file)),
-                // If the error is that the file was not found, attempt to create the file and any necessary parent directories.
-                Err(err) if err.kind() == ErrorKind::NotFound => {
-                    // Get the path to the parent directory of the file.
-                    let parent = path
-                        .parent()
-                        // If the parent directory does not exist, return a `UnableToCreateFileSnafu` error.
-                        .context(UnableToCreateFileSnafu { path: &path, err })?;
-
-                    // Create the parent directory and any necessary ancestors.
-                    tokio::fs::create_dir_all(parent)
-                        .await
-                        // If creating the directory fails, return a `UnableToCreateDirSnafu` error.
-                        .context(UnableToCreateDirSnafu { path: parent })?;
-                    // Try again to open the file.
-                    continue;
-                }
-                // If any other error occurs, return a `UnableToOpenFile` error.
-                Err(source) => {
-                    return Err(Error::UnableToOpenFile { source, path }.into())
-                }
-            }
-        }
+        let mut options = OpenOptions::new();
+        options.write(true).create(true).truncate(false);
+        let file = open_file_with_options(&options, &path)?;
+        Ok(Box::new(LocalUpload::new(Arc::new(file))))
     }
 
     async fn get(&self, location: &Path) -> Result<GetResult> {
@@ -586,31 +554,55 @@ impl ObjectStore for LocalFileSystem {
     }
 }
 
-/// Generates a unique file path `{base}#{suffix}`, returning the opened `File` and `suffix`
-///
-/// Creates any directories if necessary
-fn new_staged_upload(base: &std::path::Path) -> Result<(File, String)> {
-    let mut multipart_id = 1;
+fn open_file_with_options(options: &OpenOptions, path: &PathBuf) -> Result<File> {
     loop {
-        let suffix = multipart_id.to_string();
-        let path = staged_upload_path(base, &suffix);
-        let mut options = OpenOptions::new();
-        match options.read(true).write(true).create_new(true).open(&path) {
-            Ok(f) => return Ok((f, suffix)),
-            Err(e) if e.kind() == ErrorKind::AlreadyExists => {
-                multipart_id += 1;
-            }
+        match options.open(path) {
+            Ok(f) => return Ok(f),
             Err(err) if err.kind() == ErrorKind::NotFound => {
                 let parent = path
                     .parent()
-                    .context(UnableToCreateFileSnafu { path: &path, err })?;
+                    .context(UnableToCreateFileSnafu { path, err })?;
 
                 std::fs::create_dir_all(parent)
                     .context(UnableToCreateDirSnafu { path: parent })?;
 
                 continue;
             }
-            Err(source) => return Err(Error::UnableToOpenFile { source, path }.into()),
+            Err(source) if source.kind() == ErrorKind::AlreadyExists => {
+                return Err(Error::AlreadyExists {
+                    source,
+                    path: path.to_string_lossy().to_string(),
+                }
+                .into())
+            }
+
+            Err(source) => {
+                return Err(Error::UnableToOpenFile {
+                    source,
+                    path: path.clone(),
+                }
+                .into())
+            }
+        }
+    }
+}
+
+/// Generates a unique file path `{base}#{suffix}`, returning the opened `File` and `suffix`
+///
+/// Creates any directories if necessary
+fn new_staged_upload(base: &std::path::Path) -> Result<(File, String)> {
+    let mut multipart_id = 1;
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create_new(true);
+    loop {
+        let suffix = multipart_id.to_string();
+        let path = staged_upload_path(base, &suffix);
+        match open_file_with_options(&options, &path) {
+            Ok(file) => return Ok((file, suffix.clone())),
+            Err(super::Error::AlreadyExists { .. }) => {
+                multipart_id += 1;
+            }
+            Err(e) => return Err(e),
         }
     }
 }
@@ -635,29 +627,30 @@ enum LocalUploadState {
     ///
     /// Future will contain last reference to file, so it will call drop on completion.
     ShuttingDown(BoxFuture<'static, Result<(), io::Error>>),
-    /// File is being moved from it's temporary location to the final location
+    /// File is being moved from it's temporary location to the final location if staging information provided
     Committing(BoxFuture<'static, Result<(), io::Error>>),
     /// Upload is complete
     Complete,
 }
 
+type StagingData = (PathBuf, MultipartId);
+
 struct LocalUpload {
     inner_state: LocalUploadState,
-    dest: PathBuf,
-    multipart_id: MultipartId,
+    staging_data: Option<StagingData>,
 }
 
 impl LocalUpload {
-    pub fn new(
-        dest: PathBuf,
-        multipart_id: MultipartId,
-        file: Arc<std::fs::File>,
-    ) -> Self {
+    pub fn new(file: Arc<File>) -> Self {
         Self {
             inner_state: LocalUploadState::Idle(file),
-            dest,
-            multipart_id,
+            staging_data: None,
         }
+    }
+
+    pub fn with_staging(mut self, dest: PathBuf, multipart_id: MultipartId) -> Self {
+        self.staging_data = Some((dest, multipart_id));
+        self
     }
 }
 
@@ -761,24 +754,31 @@ impl AsyncWrite for LocalUpload {
                         ));
                     }
                     LocalUploadState::ShuttingDown(fut) => match fut.poll_unpin(cx) {
-                        Poll::Ready(res) => {
-                            res?;
-                            let staging_path =
-                                staged_upload_path(&self.dest, &self.multipart_id);
-                            let dest = self.dest.clone();
-                            self.inner_state = LocalUploadState::Committing(Box::pin(
-                                runtime
-                                    .spawn_blocking(move || {
-                                        std::fs::rename(&staging_path, &dest)
-                                    })
-                                    .map(move |res| match res {
-                                        Err(err) => {
-                                            Err(io::Error::new(io::ErrorKind::Other, err))
-                                        }
-                                        Ok(res) => res,
-                                    }),
-                            ));
-                        }
+                        Poll::Ready(res) => match &self.staging_data {
+                            Some((dest, multipart_id)) => {
+                                res?;
+                                let staging_path = staged_upload_path(dest, multipart_id);
+                                let dest = dest.clone();
+                                self.inner_state =
+                                    LocalUploadState::Committing(Box::pin(
+                                        runtime
+                                            .spawn_blocking(move || {
+                                                std::fs::rename(&staging_path, &dest)
+                                            })
+                                            .map(move |res| match res {
+                                                Err(err) => Err(io::Error::new(
+                                                    io::ErrorKind::Other,
+                                                    err,
+                                                )),
+                                                Ok(res) => res,
+                                            }),
+                                    ));
+                            }
+                            None => {
+                                self.inner_state = LocalUploadState::Complete;
+                                return Poll::Ready(res);
+                            }
+                        },
                         Poll::Pending => {
                             return Poll::Pending;
                         }
@@ -805,14 +805,19 @@ impl AsyncWrite for LocalUpload {
                 }
             }
         } else {
-            let staging_path = staged_upload_path(&self.dest, &self.multipart_id);
             match &mut self.inner_state {
                 LocalUploadState::Idle(file) => {
                     let file = Arc::clone(file);
                     self.inner_state = LocalUploadState::Complete;
                     file.sync_all()?;
-                    std::mem::drop(file);
-                    std::fs::rename(staging_path, &self.dest)?;
+                    drop(file);
+                    match &self.staging_data {
+                        Some((dest, multipart_id)) => {
+                            let staging_path = staged_upload_path(dest, multipart_id);
+                            std::fs::rename(staging_path, dest)?;
+                        }
+                        None => {}
+                    }
                     Poll::Ready(Ok(()))
                 }
                 _ => {
