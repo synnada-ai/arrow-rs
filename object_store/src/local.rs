@@ -598,7 +598,7 @@ fn new_staged_upload(base: &std::path::Path) -> Result<(File, String)> {
         let suffix = multipart_id.to_string();
         let path = staged_upload_path(base, &suffix);
         match open_file_with_options(&options, &path) {
-            Ok(file) => return Ok((file, suffix.clone())),
+            Ok(file) => return Ok((file, suffix)),
             Err(super::Error::AlreadyExists { .. }) => {
                 multipart_id += 1;
             }
