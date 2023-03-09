@@ -319,7 +319,7 @@ impl ObjectStore for LocalFileSystem {
         // Get the path to the file from the configuration.
         let path = self.config.path_to_filesystem(location)?;
         let mut options = OpenOptions::new();
-        options.write(true).create(true).truncate(false);
+        options.append(true).create(true).truncate(false);
         let file = open_file_with_options(&options, path)?;
         Ok(Box::new(LocalUpload::new(Arc::new(file))))
     }
@@ -576,13 +576,7 @@ fn open_file_with_options(options: &OpenOptions, path: PathBuf) -> Result<File> 
                 .into())
             }
 
-            Err(source) => {
-                return Err(Error::UnableToOpenFile {
-                    source,
-                    path,
-                }
-                .into())
-            }
+            Err(source) => return Err(Error::UnableToOpenFile { source, path }.into()),
         }
     }
 }
@@ -699,9 +693,7 @@ impl AsyncWrite for LocalUpload {
                                     LocalUploadState::Idle(Arc::clone(file));
                                 Poll::Ready(res)
                             }
-                            Poll::Pending => {
-                                Poll::Pending
-                            }
+                            Poll::Pending => Poll::Pending,
                         }
                     }
                     LocalUploadState::ShuttingDown(_) => {
@@ -1088,10 +1080,15 @@ mod tests {
             Bytes::from("data"),
             Bytes::from("gnz"),
         ];
-        let expected_data = Bytes::from("arbitrarydatagnz");
+
         let mut writer = integration.append(&location).await.unwrap();
-        for d in data {
-            writer.write_all(d.as_ref()).await.unwrap();
+        for d in &data {
+            writer.write_all(d).await.unwrap();
+        }
+
+        let mut writer = integration.append(&location).await.unwrap();
+        for d in &data {
+            writer.write_all(d).await.unwrap();
         }
 
         let read_data = integration
@@ -1101,6 +1098,7 @@ mod tests {
             .bytes()
             .await
             .unwrap();
+        let expected_data = Bytes::from("arbitrarydatagnzarbitrarydatagnz");
         assert_eq!(&*read_data, expected_data);
     }
 
