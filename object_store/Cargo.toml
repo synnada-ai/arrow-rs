@@ -57,6 +57,12 @@ aws-types = { version = "0.54", optional = true }
 aws-credential-types = { version = "0.54", optional = true }
 aws-config = { version = "0.54", optional = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.25.0", features = ["sync", "macros", "rt", "time", "io-util", "fs"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { version = "1.25.0", features = ["sync", "macros", "rt", "time", "io-util"] }
+
 [features]
 cloud = ["serde", "serde_json", "quick-xml", "reqwest", "reqwest/json", "reqwest/stream", "chrono/serde", "base64", "rand", "ring"]
 azure = ["cloud"]
