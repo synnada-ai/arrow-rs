@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `parquet/src/file/metadata.rs`."><title>metadata.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="parquet" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (1065d876c 2023-07-09)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../parquet/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `parquet/src/file/metadata.rs`."><title>metadata.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-47e7ab555ef2818a.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="parquet" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (2f5df8a94 2023-08-31)" data-channel="nightly" data-search-js="search-6dfdfced5eff6596.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-f194925aa375ae96.css" data-theme-dark-css="dark-1dd4d1ce031e15de.css" data-theme-ayu-css="ayu-49e58d069f567085.css" ><script src="../../../static.files/storage-db41da1a38ea3cb8.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ef3a2de404864b0b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-f194925aa375ae96.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1dd4d1ce031e15de.css"><link rel="stylesheet" href="../../../static.files/noscript-cffde32267a19fd6.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../parquet/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1097,6 +1097,39 @@
 <a href="#1097" id="1097">1097</a>
 <a href="#1098" id="1098">1098</a>
 <a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
 </pre></div><pre class="rust"><code><span class="comment">// Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -1254,13 +1287,13 @@
     }
 
     <span class="doccomment">/// Override the column index
-    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;arrow&quot;</span>)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_column_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: <span class="prelude-ty">Option</span>&lt;ParquetColumnIndex&gt;) {
         <span class="self">self</span>.column_index = index;
     }
 
     <span class="doccomment">/// Override the offset index
-    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;arrow&quot;</span>)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_offset_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: <span class="prelude-ty">Option</span>&lt;ParquetOffsetIndex&gt;) {
         <span class="self">self</span>.offset_index = index;
     }
@@ -1329,7 +1362,9 @@
         <span class="self">self</span>.key_value_metadata.as_ref()
     }
 
-    <span class="doccomment">/// Returns Parquet [&#39;Type`] that describes schema in this file.
+    <span class="doccomment">/// Returns Parquet [`Type`] that describes schema in this file.
+    ///
+    /// [`Type`]: crate::schema::types::Type
     </span><span class="kw">pub fn </span>schema(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SchemaType {
         <span class="self">self</span>.schema_descr.root_schema()
     }
@@ -1376,6 +1411,9 @@
     sorting_columns: <span class="prelude-ty">Option</span>&lt;Vec&lt;SortingColumn&gt;&gt;,
     total_byte_size: i64,
     schema_descr: SchemaDescPtr,
+    <span class="comment">// We can&#39;t infer from file offset of first column since there may empty columns in row group.
+    </span>file_offset: <span class="prelude-ty">Option</span>&lt;i64&gt;,
+    ordinal: <span class="prelude-ty">Option</span>&lt;i16&gt;,
 }
 
 <span class="kw">impl </span>RowGroupMetaData {
@@ -1429,6 +1467,18 @@
         <span class="self">self</span>.schema_descr.clone()
     }
 
+    <span class="doccomment">/// Returns ordinal of this row group in file
+    </span><span class="attr">#[inline(always)]
+    </span><span class="kw">pub fn </span>ordinal(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;i16&gt; {
+        <span class="self">self</span>.ordinal
+    }
+
+    <span class="doccomment">/// Returns file offset of this row group in file.
+    </span><span class="attr">#[inline(always)]
+    </span><span class="kw">pub fn </span>file_offset(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;i64&gt; {
+        <span class="self">self</span>.file_offset
+    }
+
     <span class="doccomment">/// Method to convert from Thrift.
     </span><span class="kw">pub fn </span>from_thrift(
         schema_descr: SchemaDescPtr,
@@ -1449,6 +1499,8 @@
             sorting_columns,
             total_byte_size,
             schema_descr,
+            file_offset: rg.file_offset,
+            ordinal: rg.ordinal,
         })
     }
 
@@ -1459,9 +1511,9 @@
             total_byte_size: <span class="self">self</span>.total_byte_size,
             num_rows: <span class="self">self</span>.num_rows,
             sorting_columns: <span class="self">self</span>.sorting_columns().cloned(),
-            file_offset: <span class="prelude-val">None</span>,
-            total_compressed_size: <span class="prelude-val">None</span>,
-            ordinal: <span class="prelude-val">None</span>,
+            file_offset: <span class="self">self</span>.file_offset(),
+            total_compressed_size: <span class="prelude-val">Some</span>(<span class="self">self</span>.compressed_size()),
+            ordinal: <span class="self">self</span>.ordinal,
         }
     }
 
@@ -1480,9 +1532,11 @@
         <span class="self">Self</span>(RowGroupMetaData {
             columns: Vec::with_capacity(schema_descr.num_columns()),
             schema_descr,
+            file_offset: <span class="prelude-val">None</span>,
             num_rows: <span class="number">0</span>,
             sorting_columns: <span class="prelude-val">None</span>,
             total_byte_size: <span class="number">0</span>,
+            ordinal: <span class="prelude-val">None</span>,
         })
     }
 
@@ -1507,6 +1561,17 @@
     <span class="doccomment">/// Sets column metadata for this row group.
     </span><span class="kw">pub fn </span>set_column_metadata(<span class="kw-2">mut </span><span class="self">self</span>, value: Vec&lt;ColumnChunkMetaData&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.<span class="number">0</span>.columns = value;
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Sets ordinal for this row group.
+    </span><span class="kw">pub fn </span>set_ordinal(<span class="kw-2">mut </span><span class="self">self</span>, value: i16) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.<span class="number">0</span>.ordinal = <span class="prelude-val">Some</span>(value);
+        <span class="self">self
+    </span>}
+
+    <span class="kw">pub fn </span>set_file_offset(<span class="kw-2">mut </span><span class="self">self</span>, value: i64) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.<span class="number">0</span>.file_offset = <span class="prelude-val">Some</span>(value);
         <span class="self">self
     </span>}
 
@@ -1713,7 +1778,7 @@
         <span class="kw">let </span>data_page_offset = col_metadata.data_page_offset;
         <span class="kw">let </span>index_page_offset = col_metadata.index_page_offset;
         <span class="kw">let </span>dictionary_page_offset = col_metadata.dictionary_page_offset;
-        <span class="kw">let </span>statistics = statistics::from_thrift(column_type, col_metadata.statistics);
+        <span class="kw">let </span>statistics = statistics::from_thrift(column_type, col_metadata.statistics)<span class="question-mark">?</span>;
         <span class="kw">let </span>encoding_stats = col_metadata
             .encoding_stats
             .as_ref()
@@ -2065,6 +2130,7 @@
             .set_num_rows(<span class="number">1000</span>)
             .set_total_byte_size(<span class="number">2000</span>)
             .set_column_metadata(columns)
+            .set_ordinal(<span class="number">1</span>)
             .build()
             .unwrap();
 
@@ -2178,7 +2244,7 @@
     <span class="doccomment">/// Returns sample schema descriptor so we can create column metadata.
     </span><span class="kw">fn </span>get_test_schema_descr() -&gt; SchemaDescPtr {
         <span class="kw">let </span>schema = SchemaType::group_type_builder(<span class="string">&quot;schema&quot;</span>)
-            .with_fields(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[
+            .with_fields(<span class="macro">vec!</span>[
                 Arc::new(
                     SchemaType::primitive_type_builder(<span class="string">&quot;a&quot;</span>, Type::INT32)
                         .build()
