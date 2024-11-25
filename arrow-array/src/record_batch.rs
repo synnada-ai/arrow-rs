@@ -204,6 +204,28 @@ pub struct RecordBatch {
     ///
     /// This is stored separately from the columns to handle the case of no columns
     row_count: usize,
+
+    /// THIS MEMBER IS ARAS ONLY
+    ///
+    /// This tag is used to store metadata flags for the record batch. This
+    /// should include information that do not make a material change in the
+    /// schema, but still needs to be carried with. Carrying such information
+    /// as part of schema metadata results in "schema mismatch" issues, so
+    /// this attribute should be used in such cases. Typical downstream use
+    /// cases include specifying whether the record batch is a proper data
+    /// batch, or a watermark batch, or a control message like a checkpoint
+    /// barrier.
+    ///
+    /// The flags define the type of data or message represented by the record batch.
+    /// The following values are currently defined:
+    ///
+    /// - `0`: Normal record batch data.
+    /// - `1`: A source-generated watermark.
+    /// - `2`: An intermediate node-generated watermark.
+    /// - `3`: A checkpoint message.
+    ///
+    /// Additional flag values may be defined in the future to support new use cases.
+    pub metadata_flags: u8,
 }
 
 impl RecordBatch {
@@ -263,6 +285,7 @@ impl RecordBatch {
             schema,
             columns,
             row_count: 0,
+            metadata_flags: 0,
         }
     }
 
@@ -336,6 +359,7 @@ impl RecordBatch {
             schema,
             columns,
             row_count,
+            metadata_flags: options.metadata_flags,
         })
     }
 
@@ -355,6 +379,7 @@ impl RecordBatch {
             schema,
             columns: self.columns,
             row_count: self.row_count,
+            metadata_flags: self.metadata_flags,
         })
     }
 
@@ -390,6 +415,7 @@ impl RecordBatch {
             &RecordBatchOptions {
                 match_field_names: true,
                 row_count: Some(self.row_count),
+                metadata_flags: self.metadata_flags,
             },
         )
     }
@@ -512,6 +538,7 @@ impl RecordBatch {
             schema: self.schema.clone(),
             columns,
             row_count: length,
+            metadata_flags: self.metadata_flags,
         }
     }
 
@@ -631,6 +658,11 @@ pub struct RecordBatchOptions {
 
     /// Optional row count, useful for specifying a row count for a RecordBatch with no columns
     pub row_count: Option<usize>,
+
+    /// THIS MEMBER IS ARAS ONLY
+    ///
+    /// This tag is used to store metadata flags for the record batch.
+    pub metadata_flags: u8,
 }
 
 impl RecordBatchOptions {
@@ -639,6 +671,7 @@ impl RecordBatchOptions {
         Self {
             match_field_names: true,
             row_count: None,
+            metadata_flags: 0,
         }
     }
     /// Sets the row_count of RecordBatchOptions and returns self
@@ -649,6 +682,11 @@ impl RecordBatchOptions {
     /// Sets the match_field_names of RecordBatchOptions and returns self
     pub fn with_match_field_names(mut self, match_field_names: bool) -> Self {
         self.match_field_names = match_field_names;
+        self
+    }
+    /// Sets the metadata_flags of RecordBatchOptions and returns self
+    pub fn with_metadata_flags(mut self, metadata_flags: u8) -> Self {
+        self.metadata_flags = metadata_flags;
         self
     }
 }
@@ -671,6 +709,7 @@ impl From<StructArray> for RecordBatch {
             schema: Arc::new(Schema::new(fields)),
             row_count,
             columns,
+            metadata_flags: 0,
         }
     }
 }
@@ -946,7 +985,7 @@ mod tests {
     fn create_record_batch_field_name_mismatch() {
         let fields = vec![
             Field::new("a1", DataType::Int32, false),
-            Field::new_list("a2", Field::new_list_field(DataType::Int8, false), false),
+            Field::new_list("a2", Field::new("item", DataType::Int8, false), false),
         ];
         let schema = Arc::new(Schema::new(vec![Field::new_struct("a", fields, true)]));
 
@@ -982,6 +1021,7 @@ mod tests {
         let options = RecordBatchOptions {
             match_field_names: false,
             row_count: None,
+            metadata_flags: 0,
         };
         let batch = RecordBatch::try_new_with_options(schema, vec![a], &options);
         assert!(batch.is_ok());
@@ -1226,6 +1266,7 @@ mod tests {
             &RecordBatchOptions {
                 match_field_names: true,
                 row_count: Some(3),
+                metadata_flags: 0,
             },
         )
         .expect("valid conversion");
