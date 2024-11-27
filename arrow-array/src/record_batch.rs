@@ -668,7 +668,14 @@ impl RecordBatch {
 
     /// THIS METHOD IS ARAS ONLY
     ///
-    /// Sets the metadata_flags of RecordBatchOptions and returns self
+    /// Gets the metadata_flags of RecordBatch
+    pub fn metadata_flags( &self) -> u8 {
+        self.metadata_flags
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Sets the metadata_flags of RecordBatch and returns self
     pub fn with_metadata_flags(mut self, metadata_flags: u8) -> Self {
         self.metadata_flags = metadata_flags;
         self
