@@ -23,6 +23,15 @@ use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaBuilder, SchemaRef
 use std::ops::Index;
 use std::sync::Arc;
 
+/// THIS CONSTANTS ARE ARAS ONLY
+///
+/// RecordBatch metadata flags
+pub const NORMAL_RECORD_BATCH: u8 = 0;
+pub const SOURCE_GENERATED_WATERMARK: u8 = 1;
+pub const INTERMEDIATE_NODE_GENERATED_WATERMARK: u8 = 2;
+pub const CHECKPOINT_MESSAGE: u8 = 3;
+
+
 /// Trait for types that can read `RecordBatch`'s.
 ///
 /// To create from an iterator, see [RecordBatchIterator].
@@ -234,7 +243,7 @@ pub struct RecordBatch {
     /// - `3`: A checkpoint message.
     ///
     /// Additional flag values may be defined in the future to support new use cases.
-    pub metadata_flags: u8,
+    metadata_flags: u8,
 }
 
 impl RecordBatch {
@@ -656,6 +665,14 @@ impl RecordBatch {
             .map(|array| array.get_array_memory_size())
             .sum()
     }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Sets the metadata_flags of RecordBatchOptions and returns self
+    pub fn with_metadata_flags(mut self, metadata_flags: u8) -> Self {
+        self.metadata_flags = metadata_flags;
+        self
+    }
 }
 
 /// Options that control the behaviour used when creating a [`RecordBatch`].
@@ -693,6 +710,8 @@ impl RecordBatchOptions {
         self.match_field_names = match_field_names;
         self
     }
+    /// THIS METHOD IS ARAS ONLY
+    ///
     /// Sets the metadata_flags of RecordBatchOptions and returns self
     pub fn with_metadata_flags(mut self, metadata_flags: u8) -> Self {
         self.metadata_flags = metadata_flags;
