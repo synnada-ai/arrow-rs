@@ -658,21 +658,6 @@ impl RecordBatch {
 
     /// THIS METHOD IS ARAS ONLY
     ///
-    /// Converts the fields of the batch to nullable.
-    pub fn make_fields_nullable(&mut self) {
-        let fields = self
-            .schema()
-            .fields()
-            .iter()
-            .map(|field| field.as_ref().clone().with_nullable(true)).collect::<Vec<_>>();
-        self.schema = Arc::new(Schema::new_with_metadata(
-            fields,
-            self.schema().metadata().clone(),
-        ));
-    }
-
-    /// THIS METHOD IS ARAS ONLY
-    ///
     /// Gets the metadata_flags of RecordBatch
     pub fn metadata_flags(&self) -> u8 {
         self.metadata_flags
