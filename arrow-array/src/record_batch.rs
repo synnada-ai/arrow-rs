@@ -31,7 +31,6 @@ pub const SOURCE_GENERATED_WATERMARK: u8 = 1;
 pub const INTERMEDIATE_NODE_GENERATED_WATERMARK: u8 = 2;
 pub const CHECKPOINT_MESSAGE: u8 = 3;
 
-
 /// Trait for types that can read `RecordBatch`'s.
 ///
 /// To create from an iterator, see [RecordBatchIterator].
@@ -660,7 +659,7 @@ impl RecordBatch {
     /// THIS METHOD IS ARAS ONLY
     ///
     /// Gets the metadata_flags of RecordBatch
-    pub fn metadata_flags( &self) -> u8 {
+    pub fn metadata_flags(&self) -> u8 {
         self.metadata_flags
     }
 
