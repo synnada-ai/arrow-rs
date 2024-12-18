@@ -230,6 +230,8 @@ pub use array::*;
 mod record_batch;
 pub use record_batch::{
     RecordBatch, RecordBatchIterator, RecordBatchOptions, RecordBatchReader, RecordBatchWriter,
+    CHECKPOINT_MESSAGE, INTERMEDIATE_NODE_GENERATED_WATERMARK, NORMAL_RECORD_BATCH,
+    SOURCE_GENERATED_WATERMARK,
 };
 
 mod arithmetic;
