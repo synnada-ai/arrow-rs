@@ -26,8 +26,20 @@ use std::sync::Arc;
 /// THIS CONSTANT IS ARAS ONLY
 pub const NORMAL_RECORD_BATCH: u8 = 0;
 /// THIS CONSTANT IS ARAS ONLY
+///
+/// Whether the watermark is [`SOURCE_GENERATED_WATERMARK`] or
+/// [`INTERMEDIATE_NODE_GENERATED_WATERMARK`] is not be important
+/// for the watermark algorithms. They are seperated because of
+/// testing purposes. Once the watermark infrastructure is solid
+/// and complete, then we will unify them.
 pub const SOURCE_GENERATED_WATERMARK: u8 = 1;
 /// THIS CONSTANT IS ARAS ONLY
+///
+/// Whether the watermark is [`SOURCE_GENERATED_WATERMARK`] or
+/// [`INTERMEDIATE_NODE_GENERATED_WATERMARK`] is not be important
+/// for the watermark algorithms. They are seperated because of
+/// testing purposes. Once the watermark infrastructure is solid
+/// and complete, then we will unify them.
 pub const INTERMEDIATE_NODE_GENERATED_WATERMARK: u8 = 2;
 /// THIS CONSTANT IS ARAS ONLY
 pub const CHECKPOINT_MESSAGE: u8 = 3;

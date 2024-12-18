@@ -461,17 +461,6 @@ impl Schema {
     pub fn remove(&mut self, index: usize) -> FieldRef {
         self.fields.remove(index)
     }
-
-    /// THIS METHOD IS ARAS ONLY
-    ///
-    /// Converts the fields of the batch to nullable.
-    pub fn make_fields_nullable(&mut self) {
-        let fields = self
-            .fields
-            .iter()
-            .map(|field| field.as_ref().clone().with_nullable(true));
-        self.fields = Fields::from_iter(fields);
-    }
 }
 
 impl fmt::Display for Schema {
