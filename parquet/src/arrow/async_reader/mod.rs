@@ -49,7 +49,6 @@ use crate::bloom_filter::{
     chunk_read_bloom_filter_header_and_offset, Sbbf, SBBF_HEADER_SIZE_ESTIMATE,
 };
 use crate::column::page::{PageIterator, PageReader};
-use crate::column::reader::decoder::ColumnValueDecoderOptions;
 use crate::errors::{ParquetError, Result};
 use crate::file::metadata::{ParquetMetaData, ParquetMetaDataReader};
 use crate::file::page_index::offset_index::OffsetIndexMetaData;
@@ -65,6 +64,8 @@ mod store;
 use crate::arrow::schema::ParquetField;
 #[cfg(feature = "object_store")]
 pub use store::*;
+
+use super::decoder::ColumnValueDecoderOptions;
 
 /// The asynchronous interface used by [`ParquetRecordBatchStream`] to read parquet files
 ///
@@ -539,8 +540,6 @@ type ReadResult<T> = Result<(ReaderFactory<T>, Option<ParquetRecordBatchReader>)
 /// [`ReaderFactory`] is used by [`ParquetRecordBatchStream`] to create
 /// [`ParquetRecordBatchReader`]
 struct ReaderFactory<T> {
-    column_value_decoder_options: ColumnValueDecoderOptions,
-
     metadata: Arc<ParquetMetaData>,
 
     fields: Option<Arc<ParquetField>>,
@@ -552,6 +551,8 @@ struct ReaderFactory<T> {
     limit: Option<usize>,
 
     offset: Option<usize>,
+
+    column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl<T> ReaderFactory<T>
@@ -598,10 +599,8 @@ where
                     .fetch(&mut self.input, predicate_projection, selection.as_ref())
                     .await?;
 
-                // TODO: set as true by config
                 let array_reader = build_array_reader(
                     self.column_value_decoder_options.clone(),
-                    // ColumnValueDecoderOptions::default(),
                     self.fields.as_deref(),
                     predicate_projection,
                     &row_group,
@@ -2374,9 +2373,8 @@ mod tests {
         // load metadata once
         let meta = ArrowReaderMetadata::load_async(
             &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::default().with_skip_validation(skip_validation),
-            ),
+            ArrowReaderOptions::new()
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(skip_validation)),
         )
         .await
         .unwrap();

@@ -20,9 +20,10 @@ use crate::arrow::buffer::view_buffer::ViewBuffer;
 use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
+use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
-use crate::column::reader::decoder::{ColumnValueDecoder, ColumnValueDecoderOptions};
+use crate::column::reader::decoder::ColumnValueDecoder;
 use crate::data_type::Int32Type;
 use crate::encodings::decoding::{Decoder, DeltaBitPackDecoder};
 use crate::errors::{ParquetError, Result};
@@ -383,7 +384,7 @@ impl ByteViewArrayDecoderPlain {
                 //
                 // The implementation keeps a water mark `utf8_validation_begin` to track the beginning of the buffer that is not validated.
                 // If the length is smaller than 128, then we continue to next string.
-                // If the length is larger than 128, then we validate the buffer before the length bytes, and move the water mark to the beginning of next string.
+                // If the length is larger than 128, then we validate the buffer before the length bytes, and ve the water mark to the beginning of next string.
                 if len < 128 {
                     // fast path, move to next string.
                     // the len bytes are valid utf8.

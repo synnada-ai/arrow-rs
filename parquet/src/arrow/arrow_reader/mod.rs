@@ -32,13 +32,14 @@ use crate::arrow::array_reader::{build_array_reader, ArrayReader};
 use crate::arrow::schema::{parquet_to_arrow_schema_and_fields, ParquetField};
 use crate::arrow::{parquet_to_arrow_field_levels, FieldLevels, ProjectionMask};
 use crate::column::page::{PageIterator, PageReader};
-use crate::column::reader::decoder::ColumnValueDecoderOptions;
 #[cfg(feature = "encryption")]
 use crate::encryption::decrypt::FileDecryptionProperties;
 use crate::errors::{ParquetError, Result};
 use crate::file::metadata::{ParquetMetaData, ParquetMetaDataReader};
 use crate::file::reader::{ChunkReader, SerializedPageReader};
 use crate::schema::types::SchemaDescriptor;
+
+use super::decoder::ColumnValueDecoderOptions;
 
 mod filter;
 mod selection;
@@ -111,6 +112,8 @@ pub struct ArrowReaderBuilder<T> {
     pub(crate) limit: Option<usize>,
 
     pub(crate) offset: Option<usize>,
+
+    pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl<T> ArrowReaderBuilder<T> {
@@ -120,6 +123,7 @@ impl<T> ArrowReaderBuilder<T> {
             metadata: metadata.metadata,
             schema: metadata.schema,
             fields: metadata.fields,
+            column_value_decoder_options: metadata.column_value_decoder_options,
             batch_size: 1024,
             row_groups: None,
             projection: ProjectionMask::all(),
@@ -143,6 +147,11 @@ impl<T> ArrowReaderBuilder<T> {
     /// Returns the arrow [`SchemaRef`] for this parquet file
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
+    }
+
+    /// Returns the ColumnValueDecoderOptions
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
     }
 
     /// Set the size of [`RecordBatch`] to produce. Defaults to 1024
@@ -285,6 +294,7 @@ impl<T> ArrowReaderBuilder<T> {
 /// is then read from the file, including projection and filter pushdown
 #[derive(Debug, Clone, Default)]
 pub struct ArrowReaderOptions {
+    /// The options used to decode column values
     column_value_decoder_options: ColumnValueDecoderOptions,
 
     /// Should the reader strip any user defined metadata from the Arrow schema

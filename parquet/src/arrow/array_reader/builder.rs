@@ -28,9 +28,8 @@ use crate::arrow::array_reader::{
     PrimitiveArrayReader, RowGroups, StructArrayReader,
 };
 use crate::arrow::schema::{ParquetField, ParquetFieldType};
-use crate::arrow::ProjectionMask;
+use crate::arrow::{ColumnValueDecoderOptions, ProjectionMask};
 use crate::basic::Type as PhysicalType;
-use crate::column::reader::decoder::ColumnValueDecoderOptions;
 use crate::data_type::{BoolType, DoubleType, FloatType, Int32Type, Int64Type, Int96Type};
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::{ColumnDescriptor, ColumnPath, Type};

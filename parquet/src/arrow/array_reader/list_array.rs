@@ -250,8 +250,9 @@ mod tests {
     use crate::arrow::array_reader::list_array::ListArrayReader;
     use crate::arrow::array_reader::test_util::InMemoryArrayReader;
     use crate::arrow::schema::parquet_to_arrow_schema_and_fields;
-    use crate::arrow::{parquet_to_arrow_schema, ArrowWriter, ProjectionMask};
-    use crate::column::reader::decoder::ColumnValueDecoderOptions;
+    use crate::arrow::{
+        parquet_to_arrow_schema, ArrowWriter, ColumnValueDecoderOptions, ProjectionMask,
+    };
     use crate::file::properties::WriterProperties;
     use crate::file::reader::{FileReader, SerializedFileReader};
     use crate::schema::parser::parse_message_type;

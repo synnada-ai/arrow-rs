@@ -17,6 +17,10 @@
 
 use arrow_buffer::Buffer;
 
+use crate::arrow::record_reader::{
+    buffer::ValuesBuffer,
+    definition_levels::{DefinitionLevelBuffer, DefinitionLevelBufferDecoder},
+};
 use crate::column::reader::decoder::RepetitionLevelDecoderImpl;
 use crate::column::{
     page::PageReader,
@@ -28,13 +32,8 @@ use crate::column::{
 use crate::data_type::DataType;
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
-use crate::{
-    arrow::record_reader::{
-        buffer::ValuesBuffer,
-        definition_levels::{DefinitionLevelBuffer, DefinitionLevelBufferDecoder},
-    },
-    column::reader::decoder::ColumnValueDecoderOptions,
-};
+
+use super::ColumnValueDecoderOptions;
 
 pub(crate) mod buffer;
 mod definition_levels;
