@@ -30,18 +30,20 @@ use crate::arrow::array_reader::{
 use crate::arrow::schema::{ParquetField, ParquetFieldType};
 use crate::arrow::ProjectionMask;
 use crate::basic::Type as PhysicalType;
+use crate::column::reader::decoder::ColumnValueDecoderOptions;
 use crate::data_type::{BoolType, DoubleType, FloatType, Int32Type, Int64Type, Int96Type};
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::{ColumnDescriptor, ColumnPath, Type};
 
 /// Create array reader from parquet schema, projection mask, and parquet file reader.
 pub fn build_array_reader(
+    options: ColumnValueDecoderOptions,
     field: Option<&ParquetField>,
     mask: &ProjectionMask,
     row_groups: &dyn RowGroups,
 ) -> Result<Box<dyn ArrayReader>> {
     let reader = field
-        .and_then(|field| build_reader(field, mask, row_groups).transpose())
+        .and_then(|field| build_reader(options, field, mask, row_groups).transpose())
         .transpose()?
         .unwrap_or_else(|| make_empty_array_reader(row_groups.num_rows()));
 
@@ -49,12 +51,13 @@ pub fn build_array_reader(
 }
 
 fn build_reader(
+    options: ColumnValueDecoderOptions,
     field: &ParquetField,
     mask: &ProjectionMask,
     row_groups: &dyn RowGroups,
 ) -> Result<Option<Box<dyn ArrayReader>>> {
     match field.field_type {
-        ParquetFieldType::Primitive { .. } => build_primitive_reader(field, mask, row_groups),
+        ParquetFieldType::Primitive { .. } => build_primitive_reader(options, field, mask, row_groups),
         ParquetFieldType::Group { .. } => match &field.arrow_type {
             DataType::Map(_, _) => build_map_reader(field, mask, row_groups),
             DataType::Struct(_) => build_struct_reader(field, mask, row_groups),
@@ -75,8 +78,8 @@ fn build_map_reader(
     let children = field.children().unwrap();
     assert_eq!(children.len(), 2);
 
-    let key_reader = build_reader(&children[0], mask, row_groups)?;
-    let value_reader = build_reader(&children[1], mask, row_groups)?;
+    let key_reader = build_reader(ColumnValueDecoderOptions::default(),&children[0], mask, row_groups)?;
+    let value_reader = build_reader(ColumnValueDecoderOptions::default(),&children[1], mask, row_groups)?;
 
     match (key_reader, value_reader) {
         (Some(key_reader), Some(value_reader)) => {
@@ -127,7 +130,7 @@ fn build_list_reader(
     let children = field.children().unwrap();
     assert_eq!(children.len(), 1);
 
-    let reader = match build_reader(&children[0], mask, row_groups)? {
+    let reader = match build_reader(ColumnValueDecoderOptions::default(), &children[0], mask, row_groups)? {
         Some(item_reader) => {
             // Need to retrieve underlying data type to handle projection
             let item_type = item_reader.get_data_type().clone();
@@ -173,7 +176,7 @@ fn build_fixed_size_list_reader(
     let children = field.children().unwrap();
     assert_eq!(children.len(), 1);
 
-    let reader = match build_reader(&children[0], mask, row_groups)? {
+    let reader = match build_reader(ColumnValueDecoderOptions::default(), &children[0], mask, row_groups)? {
         Some(item_reader) => {
             let item_type = item_reader.get_data_type().clone();
             let reader = match &field.arrow_type {
@@ -203,6 +206,7 @@ fn build_fixed_size_list_reader(
 
 /// Creates primitive array reader for each primitive type.
 fn build_primitive_reader(
+    options: ColumnValueDecoderOptions,
     field: &ParquetField,
     mask: &ProjectionMask,
     row_groups: &dyn RowGroups,
@@ -287,7 +291,7 @@ fn build_primitive_reader(
             Some(DataType::Utf8View | DataType::BinaryView) => {
                 make_byte_view_array_reader(page_iterator, column_desc, arrow_type)?
             }
-            _ => make_byte_array_reader(page_iterator, column_desc, arrow_type)?,
+            _ => make_byte_array_reader(options, page_iterator, column_desc, arrow_type)?,
         },
         PhysicalType::FIXED_LEN_BYTE_ARRAY => {
             make_fixed_len_byte_array_reader(page_iterator, column_desc, arrow_type)?
@@ -312,7 +316,7 @@ fn build_struct_reader(
     let mut builder = SchemaBuilder::with_capacity(children.len());
 
     for (arrow, parquet) in arrow_fields.iter().zip(children) {
-        if let Some(reader) = build_reader(parquet, mask, row_groups)? {
+        if let Some(reader) = build_reader(ColumnValueDecoderOptions::default(), parquet, mask, row_groups)? {
             // Need to retrieve underlying data type to handle projection
             let child_type = reader.get_data_type().clone();
             builder.push(arrow.as_ref().clone().with_data_type(child_type));
@@ -356,7 +360,7 @@ mod tests {
         )
         .unwrap();
 
-        let array_reader = build_array_reader(fields.as_ref(), &mask, &file_reader).unwrap();
+        let array_reader = build_array_reader(ColumnValueDecoderOptions::default(), fields.as_ref(), &mask, &file_reader).unwrap();
 
         // Create arrow types
         let arrow_type = DataType::Struct(Fields::from(vec![Field::new(

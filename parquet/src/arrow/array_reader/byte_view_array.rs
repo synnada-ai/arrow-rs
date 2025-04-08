@@ -22,7 +22,7 @@ use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
-use crate::column::reader::decoder::ColumnValueDecoder;
+use crate::column::reader::decoder::{ColumnValueDecoder, ColumnValueDecoderOptions};
 use crate::data_type::Int32Type;
 use crate::encodings::decoding::{Decoder, DeltaBitPackDecoder};
 use crate::errors::{ParquetError, Result};
@@ -52,6 +52,7 @@ pub fn make_byte_view_array_reader(
 
     match data_type {
         ArrowType::BinaryView | ArrowType::Utf8View => {
+            // TODO: add skip validation option
             let reader = GenericRecordReader::new(column_desc);
             Ok(Box::new(ByteViewArrayReader::new(pages, data_type, reader)))
         }
@@ -144,6 +145,16 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
             validate_utf8,
         }
     }
+
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        let validate_utf8 = options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
+        Self {
+            dict: None,
+            decoder: None,
+            validate_utf8,
+        }
+    }
+
 
     fn set_dict(
         &mut self,

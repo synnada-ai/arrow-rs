@@ -17,6 +17,7 @@
 
 use std::collections::HashMap;
 
+use arrow_data::UnsafeFlag;
 use bytes::Bytes;
 
 use crate::basic::Encoding;
@@ -87,12 +88,36 @@ pub trait DefinitionLevelDecoder: ColumnLevelDecoder {
     fn skip_def_levels(&mut self, num_levels: usize) -> Result<(usize, usize)>;
 }
 
+#[derive(Debug, Clone)]
+pub struct ColumnValueDecoderOptions {
+    pub skip_validation: UnsafeFlag,
+}
+
+impl Default for ColumnValueDecoderOptions {
+    fn default() -> Self {
+        Self {
+            skip_validation: UnsafeFlag::default(),
+        }
+    }
+}
+
+impl ColumnValueDecoderOptions {
+    pub fn with_skip_validation(self, skip_validation: UnsafeFlag) -> Self {
+        Self {
+            skip_validation,
+            ..self
+        }
+    }
+}
+
 /// Decodes value data
 pub trait ColumnValueDecoder {
     type Buffer;
 
     /// Create a new [`ColumnValueDecoder`]
     fn new(col: &ColumnDescPtr) -> Self;
+
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self;
 
     /// Set the current dictionary page
     fn set_dict(
@@ -155,6 +180,10 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
             current_encoding: None,
             decoders: Default::default(),
         }
+    }
+
+    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        Self::new(col)
     }
 
     fn set_dict(

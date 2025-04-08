@@ -23,7 +23,7 @@ use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
 use crate::basic::{Encoding, Type};
 use crate::column::page::PageIterator;
-use crate::column::reader::decoder::ColumnValueDecoder;
+use crate::column::reader::decoder::{ColumnValueDecoder, ColumnValueDecoderOptions};
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
 use arrow_array::{
@@ -311,6 +311,10 @@ impl ColumnValueDecoder for ValueDecoder {
             dict_page: None,
             decoder: None,
         }
+    }
+
+    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        Self::new(col)
     }
 
     fn set_dict(
