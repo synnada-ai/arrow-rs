@@ -190,7 +190,8 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         Self {
             dict: None,
             decoder: None,
-            validate_utf8: options.skip_validation.get() || desc.converted_type() == ConvertedType::UTF8,
+            validate_utf8: options.skip_validation.get()
+                || desc.converted_type() == ConvertedType::UTF8,
         }
     }
 
