@@ -2372,9 +2372,14 @@ mod tests {
         }
 
         // load metadata once
-        let meta = ArrowReaderMetadata::load_async(&mut file, ArrowReaderOptions::new().with_column_value_decoder_options(ColumnValueDecoderOptions::default().with_skip_validation(skip_validation)))
-            .await
-            .unwrap();
+        let meta = ArrowReaderMetadata::load_async(
+            &mut file,
+            ArrowReaderOptions::new().with_column_value_decoder_options(
+                ColumnValueDecoderOptions::default().with_skip_validation(skip_validation),
+            ),
+        )
+        .await
+        .unwrap();
         // create two readers, a and b, from the same underlying file
         // without reading the metadata again
         let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(

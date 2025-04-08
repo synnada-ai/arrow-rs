@@ -15,10 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::collections::HashMap;
-
+#[cfg(feature = "arrow")]
 use arrow_data::UnsafeFlag;
+
 use bytes::Bytes;
+use std::collections::HashMap;
 
 use crate::basic::Encoding;
 use crate::data_type::DataType;
@@ -88,25 +89,16 @@ pub trait DefinitionLevelDecoder: ColumnLevelDecoder {
     fn skip_def_levels(&mut self, num_levels: usize) -> Result<(usize, usize)>;
 }
 
-#[derive(Debug, Clone)]
+#[cfg(feature = "arrow")]
+#[derive(Debug, Default, Clone)]
 pub struct ColumnValueDecoderOptions {
     pub skip_validation: UnsafeFlag,
 }
 
-impl Default for ColumnValueDecoderOptions {
-    fn default() -> Self {
-        Self {
-            skip_validation: UnsafeFlag::default(),
-        }
-    }
-}
-
+#[cfg(feature = "arrow")]
 impl ColumnValueDecoderOptions {
-    pub fn with_skip_validation(self, skip_validation: UnsafeFlag) -> Self {
-        Self {
-            skip_validation,
-            ..self
-        }
+    pub fn new(skip_validation: UnsafeFlag) -> Self {
+        Self { skip_validation }
     }
 }
 
@@ -117,6 +109,7 @@ pub trait ColumnValueDecoder {
     /// Create a new [`ColumnValueDecoder`]
     fn new(col: &ColumnDescPtr) -> Self;
 
+    #[cfg(feature = "arrow")]
     fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self;
 
     /// Set the current dictionary page
@@ -182,6 +175,7 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
         }
     }
 
+    #[cfg(feature = "arrow")]
     fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
         Self::new(col)
     }

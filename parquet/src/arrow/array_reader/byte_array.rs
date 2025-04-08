@@ -44,7 +44,6 @@ pub fn make_byte_array_reader(
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
 ) -> Result<Box<dyn ArrayReader>> {
-    println!("call make_byte_array_reader");
     // Check if Arrow type is specified, else create it from Parquet type
     let data_type = match arrow_type {
         Some(t) => t,
@@ -180,7 +179,6 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
 
     fn new(desc: &ColumnDescPtr) -> Self {
         let validate_utf8 = desc.converted_type() == ConvertedType::UTF8;
-        println!("calling new");
         Self {
             dict: None,
             decoder: None,
@@ -189,12 +187,10 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
     }
 
     fn new_with_options(options: ColumnValueDecoderOptions, desc: &ColumnDescPtr) -> Self {
-        let validate_utf8 = options.skip_validation.get() || desc.converted_type() == ConvertedType::UTF8;
-        println!("calling new_with_options with {validate_utf8}");
         Self {
             dict: None,
             decoder: None,
-            validate_utf8,
+            validate_utf8: options.skip_validation.get() || desc.converted_type() == ConvertedType::UTF8,
         }
     }
 

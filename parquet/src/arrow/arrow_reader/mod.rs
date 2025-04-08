@@ -98,8 +98,6 @@ pub struct ArrowReaderBuilder<T> {
 
     pub(crate) fields: Option<Arc<ParquetField>>,
 
-    pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
-
     pub(crate) batch_size: usize,
 
     pub(crate) row_groups: Option<Vec<usize>>,
@@ -122,7 +120,6 @@ impl<T> ArrowReaderBuilder<T> {
             metadata: metadata.metadata,
             schema: metadata.schema,
             fields: metadata.fields,
-            column_value_decoder_options: metadata.column_value_decoder_options,
             batch_size: 1024,
             row_groups: None,
             projection: ProjectionMask::all(),
@@ -561,6 +558,11 @@ impl ArrowReaderMetadata {
     /// Returns the arrow [`SchemaRef`] for this parquet file
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
+    }
+
+    /// Returns the options used to decode column values
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
     }
 }
 
