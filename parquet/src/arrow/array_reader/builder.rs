@@ -64,7 +64,9 @@ fn build_reader(
             DataType::Struct(_) => build_struct_reader(options, field, mask, row_groups),
             DataType::List(_) => build_list_reader(options, field, mask, false, row_groups),
             DataType::LargeList(_) => build_list_reader(options, field, mask, true, row_groups),
-            DataType::FixedSizeList(_, _) => build_fixed_size_list_reader(options, field, mask, row_groups),
+            DataType::FixedSizeList(_, _) => {
+                build_fixed_size_list_reader(options, field, mask, row_groups)
+            }
             d => unimplemented!("reading group type {} not implemented", d),
         },
     }
@@ -80,18 +82,8 @@ fn build_map_reader(
     let children = field.children().unwrap();
     assert_eq!(children.len(), 2);
 
-    let key_reader = build_reader(
-        options.clone(),
-        &children[0],
-        mask,
-        row_groups,
-    )?;
-    let value_reader = build_reader(
-        options,
-        &children[1],
-        mask,
-        row_groups,
-    )?;
+    let key_reader = build_reader(options.clone(), &children[0], mask, row_groups)?;
+    let value_reader = build_reader(options, &children[1], mask, row_groups)?;
 
     match (key_reader, value_reader) {
         (Some(key_reader), Some(value_reader)) => {
@@ -143,12 +135,7 @@ fn build_list_reader(
     let children = field.children().unwrap();
     assert_eq!(children.len(), 1);
 
-    let reader = match build_reader(
-        options,
-        &children[0],
-        mask,
-        row_groups,
-    )? {
+    let reader = match build_reader(options, &children[0], mask, row_groups)? {
         Some(item_reader) => {
             // Need to retrieve underlying data type to handle projection
             let item_type = item_reader.get_data_type().clone();
@@ -195,12 +182,7 @@ fn build_fixed_size_list_reader(
     let children = field.children().unwrap();
     assert_eq!(children.len(), 1);
 
-    let reader = match build_reader(
-        options,
-        &children[0],
-        mask,
-        row_groups,
-    )? {
+    let reader = match build_reader(options, &children[0], mask, row_groups)? {
         Some(item_reader) => {
             let item_type = item_reader.get_data_type().clone();
             let reader = match &field.arrow_type {
@@ -341,12 +323,7 @@ fn build_struct_reader(
     let mut builder = SchemaBuilder::with_capacity(children.len());
 
     for (arrow, parquet) in arrow_fields.iter().zip(children) {
-        if let Some(reader) = build_reader(
-            options.clone(),
-            parquet,
-            mask,
-            row_groups,
-        )? {
+        if let Some(reader) = build_reader(options.clone(), parquet, mask, row_groups)? {
             // Need to retrieve underlying data type to handle projection
             let child_type = reader.get_data_type().clone();
             builder.push(arrow.as_ref().clone().with_data_type(child_type));

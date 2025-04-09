@@ -4649,7 +4649,7 @@ mod tests {
 
         // load metadata once
         let meta = ArrowReaderMetadata::load(
-            &mut file,
+            &file,
             ArrowReaderOptions::new()
                 .with_column_value_decoder_options(ColumnValueDecoderOptions::new(skip_validation)),
         )

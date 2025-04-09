@@ -246,8 +246,8 @@ where
     }
 
     fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
-        let validate_utf8 = !options.skip_validation.get()
-                && col.converted_type() == ConvertedType::UTF8;
+        let validate_utf8 =
+            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
         println!("validate_utf8: {}", validate_utf8);
 
         let value_type = match (V::IS_LARGE, col.converted_type() == ConvertedType::UTF8) {

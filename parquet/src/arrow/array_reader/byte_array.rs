@@ -188,8 +188,8 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
     }
 
     fn new_with_options(options: ColumnValueDecoderOptions, desc: &ColumnDescPtr) -> Self {
-        let validate_utf8 = !options.skip_validation.get()
-                && desc.converted_type() == ConvertedType::UTF8;
+        let validate_utf8 =
+            !options.skip_validation.get() && desc.converted_type() == ConvertedType::UTF8;
 
         Self {
             dict: None,
