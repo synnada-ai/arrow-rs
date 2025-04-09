@@ -38,6 +38,7 @@ use std::any::Any;
 
 /// Returns an [`ArrayReader`] that decodes the provided byte array column to view types.
 pub fn make_byte_view_array_reader(
+    options: ColumnValueDecoderOptions,
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
@@ -53,8 +54,7 @@ pub fn make_byte_view_array_reader(
 
     match data_type {
         ArrowType::BinaryView | ArrowType::Utf8View => {
-            // TODO: add skip validation option
-            let reader = GenericRecordReader::new(column_desc);
+            let reader = GenericRecordReader::new_with_options(options, column_desc);
             Ok(Box::new(ByteViewArrayReader::new(pages, data_type, reader)))
         }
 
@@ -149,7 +149,7 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
 
     fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
         let validate_utf8 =
-            options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
+            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
         Self {
             dict: None,
             decoder: None,

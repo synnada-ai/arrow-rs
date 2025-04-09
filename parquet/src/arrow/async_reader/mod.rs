@@ -1105,7 +1105,7 @@ mod tests {
     use arrow_array::types::Int32Type;
     use arrow_array::{
         Array, ArrayRef, Int32Array, Int8Array, RecordBatchReader, Scalar, StringArray,
-        StructArray, UInt64Array,
+        StringViewArray, StructArray, UInt64Array,
     };
     use arrow_data::UnsafeFlag;
     use arrow_schema::{DataType, Field, Schema};
@@ -2389,6 +2389,58 @@ mod tests {
         let r = a.next().await.unwrap().unwrap();
 
         let arr = r.column(0).as_string::<i32>();
+        assert_eq!(arr.value(0), "hello_datafusion✨");
+        assert_eq!(arr.value(1), "datafusion-arrow🎷");
+        assert_eq!(arr.value(2), "c");
+    }
+
+    #[tokio::test]
+    async fn test_skip_utf8view_validation() {
+        let mut file = tempfile().unwrap();
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "item",
+            DataType::Utf8View,
+            false,
+        )]));
+        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![Arc::new(StringViewArray::from(vec![
+                "hello_datafusion✨",
+                "datafusion-arrow🎷",
+                "c",
+            ]))],
+        )
+        .unwrap();
+        writer.write(&batch).unwrap();
+        writer.close().unwrap();
+        // open file with parquet data
+        let mut file = tokio::fs::File::from_std(file);
+
+        let mut skip_validation = UnsafeFlag::new();
+        unsafe {
+            skip_validation.set(true);
+        }
+
+        // load metadata once
+        let meta = ArrowReaderMetadata::load_async(
+            &mut file,
+            ArrowReaderOptions::new()
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(skip_validation)),
+        )
+        .await
+        .unwrap();
+        // create two readers, a and b, from the same underlying file
+        // without reading the metadata again
+        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
+            file.try_clone().await.unwrap(),
+            meta.clone(),
+        )
+        .build()
+        .unwrap();
+        let r = a.next().await.unwrap().unwrap();
+
+        let arr = r.column(0).as_string_view();
         assert_eq!(arr.value(0), "hello_datafusion✨");
         assert_eq!(arr.value(1), "datafusion-arrow🎷");
         assert_eq!(arr.value(2), "c");
