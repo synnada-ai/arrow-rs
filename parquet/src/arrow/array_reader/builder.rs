@@ -60,11 +60,11 @@ fn build_reader(
             build_primitive_reader(options, field, mask, row_groups)
         }
         ParquetFieldType::Group { .. } => match &field.arrow_type {
-            DataType::Map(_, _) => build_map_reader(field, mask, row_groups),
-            DataType::Struct(_) => build_struct_reader(field, mask, row_groups),
-            DataType::List(_) => build_list_reader(field, mask, false, row_groups),
-            DataType::LargeList(_) => build_list_reader(field, mask, true, row_groups),
-            DataType::FixedSizeList(_, _) => build_fixed_size_list_reader(field, mask, row_groups),
+            DataType::Map(_, _) => build_map_reader(options, field, mask, row_groups),
+            DataType::Struct(_) => build_struct_reader(options, field, mask, row_groups),
+            DataType::List(_) => build_list_reader(options, field, mask, false, row_groups),
+            DataType::LargeList(_) => build_list_reader(options, field, mask, true, row_groups),
+            DataType::FixedSizeList(_, _) => build_fixed_size_list_reader(options, field, mask, row_groups),
             d => unimplemented!("reading group type {} not implemented", d),
         },
     }
@@ -72,6 +72,7 @@ fn build_reader(
 
 /// Build array reader for map type.
 fn build_map_reader(
+    options: ColumnValueDecoderOptions,
     field: &ParquetField,
     mask: &ProjectionMask,
     row_groups: &dyn RowGroups,
@@ -80,13 +81,13 @@ fn build_map_reader(
     assert_eq!(children.len(), 2);
 
     let key_reader = build_reader(
-        ColumnValueDecoderOptions::default(),
+        options.clone(),
         &children[0],
         mask,
         row_groups,
     )?;
     let value_reader = build_reader(
-        ColumnValueDecoderOptions::default(),
+        options,
         &children[1],
         mask,
         row_groups,
@@ -133,6 +134,7 @@ fn build_map_reader(
 
 /// Build array reader for list type.
 fn build_list_reader(
+    options: ColumnValueDecoderOptions,
     field: &ParquetField,
     mask: &ProjectionMask,
     is_large: bool,
@@ -142,7 +144,7 @@ fn build_list_reader(
     assert_eq!(children.len(), 1);
 
     let reader = match build_reader(
-        ColumnValueDecoderOptions::default(),
+        options,
         &children[0],
         mask,
         row_groups,
@@ -185,6 +187,7 @@ fn build_list_reader(
 
 /// Build array reader for fixed-size list type.
 fn build_fixed_size_list_reader(
+    options: ColumnValueDecoderOptions,
     field: &ParquetField,
     mask: &ProjectionMask,
     row_groups: &dyn RowGroups,
@@ -193,7 +196,7 @@ fn build_fixed_size_list_reader(
     assert_eq!(children.len(), 1);
 
     let reader = match build_reader(
-        ColumnValueDecoderOptions::default(),
+        options,
         &children[0],
         mask,
         row_groups,
@@ -322,6 +325,7 @@ fn build_primitive_reader(
 }
 
 fn build_struct_reader(
+    options: ColumnValueDecoderOptions,
     field: &ParquetField,
     mask: &ProjectionMask,
     row_groups: &dyn RowGroups,
@@ -338,7 +342,7 @@ fn build_struct_reader(
 
     for (arrow, parquet) in arrow_fields.iter().zip(children) {
         if let Some(reader) = build_reader(
-            ColumnValueDecoderOptions::default(),
+            options.clone(),
             parquet,
             mask,
             row_groups,

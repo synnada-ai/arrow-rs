@@ -696,7 +696,7 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
                 }
 
                 let array_reader = build_array_reader(
-                    ColumnValueDecoderOptions::default(),
+                    self.column_value_decoder_options.clone(),
                     self.fields.as_deref(),
                     predicate.projection(),
                     &reader,
@@ -712,7 +712,7 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
         }
 
         let array_reader = build_array_reader(
-            ColumnValueDecoderOptions::default(),
+            self.column_value_decoder_options,
             self.fields.as_deref(),
             &self.projection,
             &reader,
@@ -912,13 +912,14 @@ impl ParquetRecordBatchReader {
     /// Note: this is a low-level interface see [`ParquetRecordBatchReader::try_new`] for a
     /// higher-level interface for reading parquet data from a file
     pub fn try_new_with_row_groups(
+        options: ArrowReaderOptions,
         levels: &FieldLevels,
         row_groups: &dyn RowGroups,
         batch_size: usize,
         selection: Option<RowSelection>,
     ) -> Result<Self> {
         let array_reader = build_array_reader(
-            ColumnValueDecoderOptions::default(),
+            options.column_value_decoder_options,
             levels.levels.as_ref(),
             &ProjectionMask::all(),
             row_groups,
@@ -1054,7 +1055,7 @@ mod tests {
     };
     use arrow_array::*;
     use arrow_buffer::{i256, ArrowNativeType, Buffer, IntervalDayTime};
-    use arrow_data::{ArrayData, ArrayDataBuilder};
+    use arrow_data::{ArrayData, ArrayDataBuilder, UnsafeFlag};
     use arrow_schema::{
         ArrowError, DataType as ArrowDataType, Field, Fields, Schema, SchemaRef, TimeUnit,
     };
@@ -1066,11 +1067,12 @@ mod tests {
     use tempfile::tempfile;
 
     use crate::arrow::arrow_reader::{
-        ArrowPredicateFn, ArrowReaderBuilder, ArrowReaderOptions, ParquetRecordBatchReader,
-        ParquetRecordBatchReaderBuilder, RowFilter, RowSelection, RowSelector,
+        ArrowPredicateFn, ArrowReaderBuilder, ArrowReaderMetadata, ArrowReaderOptions,
+        ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder, RowFilter, RowSelection,
+        RowSelector,
     };
     use crate::arrow::schema::add_encoded_arrow_schema_to_metadata;
-    use crate::arrow::{ArrowWriter, ProjectionMask};
+    use crate::arrow::{ArrowWriter, ColumnValueDecoderOptions, ProjectionMask};
     use crate::basic::{ConvertedType, Encoding, Repetition, Type as PhysicalType};
     use crate::column::reader::decoder::REPETITION_LEVELS_BATCH_SIZE;
     use crate::data_type::{
@@ -4616,5 +4618,56 @@ mod tests {
         let c1 = out.column(2).as_list::<i32>();
         assert_eq!(c0.len(), c1.len());
         c0.iter().zip(c1.iter()).for_each(|(l, r)| assert_eq!(l, r));
+    }
+
+    #[tokio::test]
+    async fn test_skip_utf8_validation() {
+        let mut file = tempfile().unwrap();
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "item",
+            arrow::datatypes::DataType::Utf8,
+            false,
+        )]));
+        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![Arc::new(StringArray::from(vec![
+                "hello_datafusion✨",
+                "datafusion-arrow🎷",
+                "c",
+            ]))],
+        )
+        .unwrap();
+        writer.write(&batch).unwrap();
+        writer.close().unwrap();
+
+        // open file with parquet data
+        let mut skip_validation = UnsafeFlag::new();
+        unsafe {
+            skip_validation.set(true);
+        }
+
+        // load metadata once
+        let meta = ArrowReaderMetadata::load(
+            &mut file,
+            ArrowReaderOptions::new()
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(skip_validation)),
+        )
+        .unwrap();
+        // create two readers, a and b, from the same underlying file
+        // without reading the metadata again
+        let mut reader = ParquetRecordBatchReaderBuilder::new_with_metadata(
+            file.try_clone().unwrap(),
+            meta.clone(),
+        )
+        .build()
+        .unwrap();
+
+        let r = reader.next().unwrap().unwrap();
+
+        let arr = r.column(0).as_string::<i32>();
+        assert_eq!(arr.value(0), "hello_datafusion✨");
+        assert_eq!(arr.value(1), "datafusion-arrow🎷");
+        assert_eq!(arr.value(2), "c");
     }
 }
