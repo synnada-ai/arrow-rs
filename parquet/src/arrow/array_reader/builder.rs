@@ -310,7 +310,7 @@ fn build_primitive_reader(
         )?) as _,
         PhysicalType::BYTE_ARRAY => match arrow_type {
             Some(DataType::Dictionary(_, _)) => {
-                make_byte_array_dictionary_reader(page_iterator, column_desc, arrow_type)?
+                make_byte_array_dictionary_reader(options, page_iterator, column_desc, arrow_type)?
             }
             Some(DataType::Utf8View | DataType::BinaryView) => {
                 make_byte_view_array_reader(options, page_iterator, column_desc, arrow_type)?

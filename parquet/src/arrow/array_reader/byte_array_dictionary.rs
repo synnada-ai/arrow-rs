@@ -41,14 +41,14 @@ use crate::util::bit_util::FromBytes;
 /// A macro to reduce verbosity of [`make_byte_array_dictionary_reader`]
 macro_rules! make_reader {
     (
-        ($pages:expr, $column_desc:expr, $data_type:expr) => match ($k:expr, $v:expr) {
+        ($options:expr, $pages:expr, $column_desc:expr, $data_type:expr) => match ($k:expr, $v:expr) {
             $(($key_arrow:pat, $value_arrow:pat) => ($key_type:ty, $value_type:ty),)+
         }
     ) => {
         match (($k, $v)) {
             $(
                 ($key_arrow, $value_arrow) => {
-                    let reader = GenericRecordReader::new($column_desc);
+                    let reader = GenericRecordReader::new_with_options($options, $column_desc);
                     Ok(Box::new(ByteArrayDictionaryReader::<$key_type, $value_type>::new(
                         $pages, $data_type, reader,
                     )))
@@ -75,6 +75,7 @@ macro_rules! make_reader {
 /// that the read batch size used is a divisor of the row group size
 ///
 pub fn make_byte_array_dictionary_reader(
+    options: ColumnValueDecoderOptions,
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
@@ -90,7 +91,7 @@ pub fn make_byte_array_dictionary_reader(
     match &data_type {
         ArrowType::Dictionary(key_type, value_type) => {
             make_reader! {
-                (pages, column_desc, data_type) => match (key_type.as_ref(), value_type.as_ref()) {
+                (options, pages, column_desc, data_type) => match (key_type.as_ref(), value_type.as_ref()) {
                     (ArrowType::UInt8, ArrowType::Binary | ArrowType::Utf8) => (u8, i32),
                     (ArrowType::UInt8, ArrowType::LargeBinary | ArrowType::LargeUtf8) => (u8, i64),
                     (ArrowType::Int8, ArrowType::Binary | ArrowType::Utf8) => (i8, i32),
@@ -244,8 +245,25 @@ where
         }
     }
 
-    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
-        Self::new(col)
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        let validate_utf8 = !options.skip_validation.get()
+                && col.converted_type() == ConvertedType::UTF8;
+        println!("validate_utf8: {}", validate_utf8);
+
+        let value_type = match (V::IS_LARGE, col.converted_type() == ConvertedType::UTF8) {
+            (true, true) => ArrowType::LargeUtf8,
+            (true, false) => ArrowType::LargeBinary,
+            (false, true) => ArrowType::Utf8,
+            (false, false) => ArrowType::Binary,
+        };
+
+        Self {
+            dict: None,
+            decoder: None,
+            validate_utf8,
+            value_type,
+            phantom: Default::default(),
+        }
     }
 
     fn set_dict(
