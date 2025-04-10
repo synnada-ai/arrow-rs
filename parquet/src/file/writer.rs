@@ -228,8 +228,11 @@ impl<W: Write + Send> SerializedFileWriter<W> {
                 BloomFilterPosition::AfterRowGroup => {
                     write_bloom_filters(buf, row_bloom_filters, &mut metadata)?
                 }
-                BloomFilterPosition::End => (),
+                BloomFilterPosition::End => {
+                    buf.flush()?;
+                }
             };
+            
             row_groups.push(metadata);
             Ok(())
         };
@@ -399,6 +402,8 @@ fn write_bloom_filters<W: Write + Send>(
                 .build()?;
         }
     }
+
+    buf.flush()?;
     Ok(())
 }
 
