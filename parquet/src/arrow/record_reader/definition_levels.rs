@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// use arrow::compute::max;
 use arrow_array::builder::BooleanBufferBuilder;
 use arrow_buffer::bit_chunk_iterator::UnalignedBitChunk;
 use arrow_buffer::Buffer;

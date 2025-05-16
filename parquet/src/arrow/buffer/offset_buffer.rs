@@ -82,7 +82,8 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
         Ok(())
     }
 
-    pub fn try_push_v2(
+    /// try_push with default value for non-UTF8 data
+    pub fn try_push_with_default_value(
         &mut self,
         data: &[u8],
         validate_utf8: bool,

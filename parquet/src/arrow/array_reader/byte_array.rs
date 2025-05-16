@@ -449,7 +449,7 @@ impl ByteArrayDecoderPlain {
                 return Err(ParquetError::EOF("eof decoding byte array".into()));
             }
 
-            let is_null = output.try_push_v2(&buf[start_offset..end_offset], self.validate_utf8, &self.default_value)?;
+            let is_null = output.try_push_with_default_value(&buf[start_offset..end_offset], self.validate_utf8, &self.default_value)?;
             if is_null {
                 non_null_mask[read] = false;
             }
