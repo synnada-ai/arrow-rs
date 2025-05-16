@@ -169,7 +169,7 @@ pub use self::async_writer::AsyncArrowWriter;
 use crate::schema::types::{SchemaDescriptor, Type};
 use arrow_schema::{FieldRef, Schema};
 
-pub use self::decoder::ColumnValueDecoderOptions;
+pub use self::decoder::{ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};
 
 // continue to export deprecated methods until they are removed
 #[allow(deprecated)]

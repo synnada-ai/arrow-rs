@@ -36,7 +36,6 @@ use arrow_buffer::i256;
 use arrow_schema::DataType as ArrowType;
 use bytes::Bytes;
 use std::any::Any;
-use std::default;
 use std::sync::Arc;
 
 /// Returns an [`ArrayReader`] that decodes the provided byte array column

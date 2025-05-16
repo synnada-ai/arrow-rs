@@ -130,28 +130,24 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
             }
         }
 
-        if !validate_utf8 {
+        if !validate_utf8 || check_valid_utf8(data).is_ok() {
             self.values.extend_from_slice(data);
         } else {
-            if check_valid_utf8(data).is_ok() {
-                self.values.extend_from_slice(data);
-            } else {
-                match default_value {
-                    DefaultValueForInvalidUtf8::Default(value) => {
-                        if check_valid_utf8(value.as_bytes()).is_ok() {
-                            self.values.extend_from_slice(value.as_bytes());
-                        } else {
-                            return Err(ParquetError::General(
-                                "encountered non UTF-8 data".to_string(),
-                            ));
-                        }
-                    }
-                    DefaultValueForInvalidUtf8::Null => return Ok(true),
-                    DefaultValueForInvalidUtf8::None => {
+            match default_value {
+                DefaultValueForInvalidUtf8::Default(value) => {
+                    if check_valid_utf8(value.as_bytes()).is_ok() {
+                        self.values.extend_from_slice(value.as_bytes());
+                    } else {
                         return Err(ParquetError::General(
                             "encountered non UTF-8 data".to_string(),
                         ));
                     }
+                }
+                DefaultValueForInvalidUtf8::Null => return Ok(true),
+                DefaultValueForInvalidUtf8::None => {
+                    return Err(ParquetError::General(
+                        "encountered non UTF-8 data".to_string(),
+                    ));
                 }
             }
         }
@@ -178,7 +174,7 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
     ) -> Result<Vec<bool>> {
         let mut non_null_mask_partial = Vec::with_capacity(keys.len());
         let mut skipped = 0;
-        for (i, key) in keys.iter().enumerate() {
+        for key in keys.iter() {
             let index = key.as_usize();
             let offset_index = index - skipped;
 

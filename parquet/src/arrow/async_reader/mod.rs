@@ -516,7 +516,7 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
 
         // Ensure schema of ParquetRecordBatchStream respects projection, and does
         // not store metadata (same as for ParquetRecordBatchReader and emitted RecordBatches)
-        let projected_fields = match reader_factory.fields.as_deref().map(|pf| &pf.arrow_type) {
+        let projected_fields = match reader.fields.as_deref().map(|pf| &pf.arrow_type) {
             Some(DataType::Struct(fields)) => {
                 fields.filter_leaves(|idx, _| self.projection.leaf_included(idx))
             }
@@ -532,7 +532,7 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
             projection: self.projection,
             selection: self.selection,
             schema,
-            reader_factory: Some(reader_factory),
+            reader_factory: Some(reader),
             state: StreamState::Init,
         })
     }
@@ -1120,7 +1120,6 @@ mod tests {
     use futures::{StreamExt, TryStreamExt};
     use rand::{rng, Rng};
     use std::collections::HashMap;
-    use std::fs::{File, OpenOptions};
     use std::io::{Read, Seek, Write};
     use std::sync::{Arc, Mutex};
     use tempfile::tempfile;
@@ -2543,7 +2542,7 @@ mod tests {
         file.seek(SeekFrom::Start(0)).unwrap();
 
         let mut buf = Vec::new();
-        let n = file.read_to_end(&mut buf).unwrap();
+        let _ = file.read_to_end(&mut buf).unwrap();
 
         buf[22] = 0xf0;
         buf[23] = 0x28;
@@ -2554,10 +2553,7 @@ mod tests {
         // open file with parquet data
         let mut file = tokio::fs::File::from_std(file);
 
-        let mut skip_validation = UnsafeFlag::new();
-        // unsafe {
-        //     skip_validation.set(true);
-        // }
+        let skip_validation = UnsafeFlag::new();
 
         let default_value = DefaultValueForInvalidUtf8::Default("default_value".into());
 
@@ -2611,7 +2607,7 @@ mod tests {
         file.seek(SeekFrom::Start(0)).unwrap();
 
         let mut buf = Vec::new();
-        let n = file.read_to_end(&mut buf).unwrap();
+        let _n = file.read_to_end(&mut buf).unwrap();
 
         buf[22] = 0xa0;
         buf[23] = 0x28;
@@ -2622,10 +2618,7 @@ mod tests {
         // open file with parquet data
         let mut file = tokio::fs::File::from_std(file);
 
-        let mut skip_validation = UnsafeFlag::new();
-        // unsafe {
-        //     skip_validation.set(true);
-        // }
+        let skip_validation = UnsafeFlag::new();
 
         let default_value = DefaultValueForInvalidUtf8::Default("default_value".into());
         // load metadata once
@@ -2678,7 +2671,7 @@ mod tests {
         file.seek(SeekFrom::Start(0)).unwrap();
 
         let mut buf = Vec::new();
-        let n = file.read_to_end(&mut buf).unwrap();
+        let _ = file.read_to_end(&mut buf).unwrap();
 
         buf[22] = 0xf0;
         buf[23] = 0x28;
@@ -2689,10 +2682,7 @@ mod tests {
         // open file with parquet data
         let mut file = tokio::fs::File::from_std(file);
 
-        let mut skip_validation = UnsafeFlag::new();
-        // unsafe {
-        //     skip_validation.set(true);
-        // }
+        let skip_validation = UnsafeFlag::new();
 
         let default_value = DefaultValueForInvalidUtf8::Null;
 

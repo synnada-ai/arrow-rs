@@ -86,7 +86,7 @@ pub trait DefinitionLevelDecoder: ColumnLevelDecoder {
         out: &mut Self::Buffer,
         num_levels: usize,
         start_offset: usize,
-        is_null_mask: Vec<bool>,
+        non_null_mask: Vec<bool>,
     ) -> Result<(usize, usize)>;
 
     /// Skips over `num_levels` definition levels
@@ -368,7 +368,7 @@ impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
         out: &mut Self::Buffer,
         num_levels: usize,
         start_offset: usize,
-        is_null_mask: Vec<bool>,
+        _non_null_mask: Vec<bool>,
     ) -> Result<(usize, usize)> {
         let levels_read = out.len() - start_offset;
         debug_assert_eq!(levels_read, num_levels);

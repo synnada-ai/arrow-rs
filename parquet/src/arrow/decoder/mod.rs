@@ -25,11 +25,21 @@ use arrow_data::UnsafeFlag;
 pub use delta_byte_array::DeltaByteArrayDecoder;
 pub use dictionary_index::DictIndexDecoder;
 
+/// Default value for invalid UTF-8 strings.
+///
+/// This enum is used to specify the default value for invalid UTF-8 strings
+/// when decoding column values. It can be set to a specific default string,
+/// a null value, or no default value at all.
 #[derive(Debug, Default, Clone)]
 pub enum DefaultValueForInvalidUtf8 {
+    /// Default value for invalid UTF-8 strings.
     Default(String),
+    /// Default value for invalid UTF-8 strings, which is a null value.
     Null,
     #[default]
+    /// No default value for invalid UTF-8 strings.
+    /// This means that the decoder will return an error if it encounters invalid UTF-8.
+    /// This is the default behavior.
     None,
 }
 
@@ -44,6 +54,7 @@ pub enum DefaultValueForInvalidUtf8 {
 pub struct ColumnValueDecoderOptions {
     /// Skip validation of the values read from the column.
     pub skip_validation: UnsafeFlag,
+    /// Default value of non-valid UTF-8 strings.
     pub default_value: DefaultValueForInvalidUtf8,
 }
 

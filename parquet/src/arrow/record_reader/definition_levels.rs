@@ -196,7 +196,7 @@ impl DefinitionLevelDecoder for DefinitionLevelBufferDecoder {
                     nulls,
                     max_level,
                 },
-                MaybePacked::Fallback(decoder),
+                MaybePacked::Fallback(_decoder),
             ) => {
                 assert_eq!(self.max_level, *max_level);
                 debug_assert_eq!(levels.len(), start_offset + num_levels);
@@ -204,18 +204,16 @@ impl DefinitionLevelDecoder for DefinitionLevelBufferDecoder {
                 // TODO: handle non-null-mask case
                 let mut values_read = 0;
 
-                for i in start_offset..levels.len() {
-                    let l = levels[i];
-
-                    assert_eq!(nulls.get_bit(i), &l == max_level);
-                    if &l == max_level {
+                for (i, l) in levels.iter().enumerate().skip(start_offset) {
+                    if l == max_level {
+                        debug_assert!(nulls.get_bit(i));
                         values_read += 1;
                     }
                 }
 
                 Ok((values_read, num_levels))
             }
-            (BufferInner::Mask { nulls }, MaybePacked::Packed(decoder)) => {
+            (BufferInner::Mask { nulls }, MaybePacked::Packed(_decoder)) => {
                 assert_eq!(self.max_level, 1);
 
                 let values_read =

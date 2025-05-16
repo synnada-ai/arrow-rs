@@ -310,7 +310,6 @@ where
             total_values_read += values_read;
         }
 
-        // debug_assert_eq!(total_null_mask.len(), total_levels_read);
         Ok((total_records_read, total_values_read, total_levels_read))
     }
 

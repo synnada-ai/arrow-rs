@@ -22,7 +22,10 @@ use parquet::arrow::arrow_reader::{
     ArrowReaderOptions, ParquetRecordBatchReader, RowGroups, RowSelection,
 };
 use parquet::arrow::async_reader::AsyncFileReader;
-use parquet::arrow::{parquet_to_arrow_field_levels, ColumnValueDecoderOptions, ProjectionMask};
+use parquet::arrow::{
+    parquet_to_arrow_field_levels, ColumnValueDecoderOptions, DefaultValueForInvalidUtf8,
+    ProjectionMask,
+};
 use parquet::column::page::{PageIterator, PageReader};
 use parquet::errors::{ParquetError, Result};
 use parquet::file::metadata::RowGroupMetaData;
@@ -42,8 +45,9 @@ async fn main() -> Result<()> {
 
     // By default validation is not skipped
     let skip_validation = UnsafeFlag::new();
-    let options = ArrowReaderOptions::new()
-        .with_column_value_decoder_options(ColumnValueDecoderOptions::new(skip_validation));
+    let options = ArrowReaderOptions::new().with_column_value_decoder_options(
+        ColumnValueDecoderOptions::new(skip_validation, DefaultValueForInvalidUtf8::None),
+    );
 
     for rg in metadata.row_groups() {
         let mut rowgroup =
