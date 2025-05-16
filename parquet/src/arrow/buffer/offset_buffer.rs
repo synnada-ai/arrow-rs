@@ -16,6 +16,7 @@
 // under the License.
 
 use crate::arrow::buffer::bit_util::iter_set_bits_rev;
+use crate::arrow::decoder::DefaultValueForInvalidUtf8;
 use crate::arrow::record_reader::buffer::ValuesBuffer;
 use crate::errors::{ParquetError, Result};
 use crate::util::utf8::check_valid_utf8;
@@ -79,6 +80,127 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
 
         self.offsets.push(index_offset);
         Ok(())
+    }
+
+    /// try_push with default value for non-UTF8 data
+    pub fn try_push_with_default_value(
+        &mut self,
+        data: &[u8],
+        validate_utf8: bool,
+        default_value: &DefaultValueForInvalidUtf8,
+    ) -> Result<bool> {
+        if validate_utf8 {
+            if let Some(&b) = data.first() {
+                // A valid code-point iff it does not start with 0b10xxxxxx
+                // Bit-magic taken from `std::str::is_char_boundary`
+                if (b as i8) < -0x40 {
+                    match default_value {
+                        DefaultValueForInvalidUtf8::Default(value) => {
+                            if check_valid_utf8(value.as_bytes()).is_ok() {
+                                self.values.extend_from_slice(value.as_bytes());
+                            } else {
+                                return Err(ParquetError::General(
+                                    "encountered non UTF-8 data".to_string(),
+                                ));
+                            }
+
+                            let index_offset =
+                                I::from_usize(self.values.len()).ok_or_else(|| {
+                                    general_err!("index overflow decoding byte array")
+                                })?;
+
+                            self.offsets.push(index_offset);
+                            return Ok(false);
+                        }
+                        DefaultValueForInvalidUtf8::Null => {
+                            let index_offset =
+                                I::from_usize(self.values.len()).ok_or_else(|| {
+                                    general_err!("index overflow decoding byte array")
+                                })?;
+
+                            self.offsets.push(index_offset);
+                            return Ok(true);
+                        }
+                        DefaultValueForInvalidUtf8::None => {
+                            return Err(ParquetError::General(
+                                "encountered non UTF-8 data".to_string(),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        if !validate_utf8 || check_valid_utf8(data).is_ok() {
+            self.values.extend_from_slice(data);
+        } else {
+            match default_value {
+                DefaultValueForInvalidUtf8::Default(value) => {
+                    if check_valid_utf8(value.as_bytes()).is_ok() {
+                        self.values.extend_from_slice(value.as_bytes());
+                    } else {
+                        return Err(ParquetError::General(
+                            "encountered non UTF-8 data".to_string(),
+                        ));
+                    }
+                }
+                DefaultValueForInvalidUtf8::Null => return Ok(true),
+                DefaultValueForInvalidUtf8::None => {
+                    return Err(ParquetError::General(
+                        "encountered non UTF-8 data".to_string(),
+                    ));
+                }
+            }
+        }
+
+        let index_offset = I::from_usize(self.values.len())
+            .ok_or_else(|| general_err!("index overflow decoding byte array"))?;
+
+        self.offsets.push(index_offset);
+        Ok(false)
+    }
+
+    /// Extends this buffer with a list of keys
+    ///
+    /// For each value `key` in `keys` this will insert
+    /// `&dict_values[dict_offsets[key]..dict_offsets[key+1]]`
+    ///
+    /// Note: This will validate offsets are valid
+    pub fn extend_from_dictionary_with_non_null_mask<K: ArrowNativeType, V: ArrowNativeType>(
+        &mut self,
+        keys: &[K],
+        dict_offsets: &[V],
+        dict_values: &[u8],
+        non_null_mask: &[bool],
+    ) -> Result<Vec<bool>> {
+        let mut non_null_mask_partial = Vec::with_capacity(keys.len());
+        let mut skipped = 0;
+        for key in keys.iter() {
+            let index = key.as_usize();
+            let offset_index = index - skipped;
+
+            debug_assert!(index < non_null_mask.len());
+            if !non_null_mask[index] {
+                non_null_mask_partial.push(false);
+                skipped += 1;
+                continue;
+            }
+
+            non_null_mask_partial.push(true);
+
+            if offset_index + 1 >= dict_offsets.len() {
+                return Err(general_err!(
+                    "dictionary key beyond bounds of dictionary: 0..{}",
+                    dict_offsets.len().saturating_sub(1)
+                ));
+            }
+            let start_offset = dict_offsets[offset_index].as_usize();
+            let end_offset = dict_offsets[offset_index + 1].as_usize();
+
+            // Dictionary values are verified when decoding dictionary page
+            self.try_push(&dict_values[start_offset..end_offset], false)?;
+        }
+        Ok(non_null_mask_partial)
     }
 
     /// Extends this buffer with a list of keys

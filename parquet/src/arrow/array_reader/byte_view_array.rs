@@ -20,6 +20,7 @@ use crate::arrow::buffer::view_buffer::ViewBuffer;
 use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
+use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -37,6 +38,7 @@ use std::any::Any;
 
 /// Returns an [`ArrayReader`] that decodes the provided byte array column to view types.
 pub fn make_byte_view_array_reader(
+    options: ColumnValueDecoderOptions,
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
@@ -52,7 +54,7 @@ pub fn make_byte_view_array_reader(
 
     match data_type {
         ArrowType::BinaryView | ArrowType::Utf8View => {
-            let reader = GenericRecordReader::new(column_desc);
+            let reader = GenericRecordReader::new_with_options(options, column_desc);
             Ok(Box::new(ByteViewArrayReader::new(pages, data_type, reader)))
         }
 
@@ -145,6 +147,16 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         }
     }
 
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        let validate_utf8 =
+            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
+        Self {
+            dict: None,
+            decoder: None,
+            validate_utf8,
+        }
+    }
+
     fn set_dict(
         &mut self,
         buf: Bytes,
@@ -198,6 +210,11 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
             .ok_or_else(|| general_err!("no decoder set"))?;
 
         decoder.read(out, num_values, self.dict.as_ref())
+    }
+
+    fn read_with_null_mask(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<Vec<bool>> {
+        let len = self.read(out, num_values)?;
+        Ok(vec![true; len])
     }
 
     fn skip_values(&mut self, num_values: usize) -> Result<usize> {
