@@ -21,7 +21,6 @@ use crate::arrow::buffer::offset_buffer::OffsetBuffer;
 use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -33,17 +32,22 @@ use arrow_array::{
     Array, ArrayRef, BinaryArray, Decimal128Array, Decimal256Array, OffsetSizeTrait,
 };
 use arrow_buffer::i256;
-use arrow_schema::DataType as ArrowType;
+use arrow_schema::{DataType as ArrowType, DataType};
 use bytes::Bytes;
 use std::any::Any;
 use std::sync::Arc;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column
 pub fn make_byte_array_reader(
-    options: ColumnValueDecoderOptions,
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
+    options: ColumnValueDecoderOptions,
 ) -> Result<Box<dyn ArrayReader>> {
     // Check if Arrow type is specified, else create it from Parquet type
     let data_type = match arrow_type {

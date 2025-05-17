@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use arrow_array::{Array, ArrayRef, OffsetSizeTrait};
 use arrow_buffer::ArrowNativeType;
-use arrow_schema::DataType as ArrowType;
+use arrow_schema::{DataType as ArrowType, DataType};
 use bytes::Bytes;
 
 use crate::arrow::array_reader::byte_array::{ByteArrayDecoder, ByteArrayDecoderPlain};
@@ -29,7 +29,6 @@ use crate::arrow::array_reader::{read_records, skip_records, ArrayReader};
 use crate::arrow::buffer::{dictionary_buffer::DictionaryBuffer, offset_buffer::OffsetBuffer};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -38,10 +37,15 @@ use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
 use crate::util::bit_util::FromBytes;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS MACRO IS COMMON, MODIFIED BY ARAS
+///
 /// A macro to reduce verbosity of [`make_byte_array_dictionary_reader`]
 macro_rules! make_reader {
     (
-        ($options:expr, $pages:expr, $column_desc:expr, $data_type:expr) => match ($k:expr, $v:expr) {
+        ($pages:expr, $column_desc:expr, $data_type:expr, $options:expr) => match ($k:expr, $v:expr) {
             $(($key_arrow:pat, $value_arrow:pat) => ($key_type:ty, $value_type:ty),)+
         }
     ) => {
@@ -62,6 +66,8 @@ macro_rules! make_reader {
     }
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column
 ///
 /// This will attempt to preserve any dictionary encoding present in the parquet data
@@ -75,10 +81,10 @@ macro_rules! make_reader {
 /// that the read batch size used is a divisor of the row group size
 ///
 pub fn make_byte_array_dictionary_reader(
-    options: ColumnValueDecoderOptions,
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
+    options: ColumnValueDecoderOptions,
 ) -> Result<Box<dyn ArrayReader>> {
     // Check if Arrow type is specified, else create it from Parquet type
     let data_type = match arrow_type {
@@ -91,7 +97,7 @@ pub fn make_byte_array_dictionary_reader(
     match &data_type {
         ArrowType::Dictionary(key_type, value_type) => {
             make_reader! {
-                (options, pages, column_desc, data_type) => match (key_type.as_ref(), value_type.as_ref()) {
+                (pages, column_desc, data_type, options) => match (key_type.as_ref(), value_type.as_ref()) {
                     (ArrowType::UInt8, ArrowType::Binary | ArrowType::Utf8) => (u8, i32),
                     (ArrowType::UInt8, ArrowType::LargeBinary | ArrowType::LargeUtf8) => (u8, i64),
                     (ArrowType::Int8, ArrowType::Binary | ArrowType::Utf8) => (i8, i32),
@@ -245,25 +251,12 @@ where
         }
     }
 
+    /// THIS METHOD IS ARAS ONLY
     fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
-        let validate_utf8 =
-            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
-        println!("validate_utf8: {}", validate_utf8);
+        let mut decoder = Self::new(col);
+        decoder.validate_utf8 &= !options.skip_validation.get();
 
-        let value_type = match (V::IS_LARGE, col.converted_type() == ConvertedType::UTF8) {
-            (true, true) => ArrowType::LargeUtf8,
-            (true, false) => ArrowType::LargeBinary,
-            (false, true) => ArrowType::Utf8,
-            (false, false) => ArrowType::Binary,
-        };
-
-        Self {
-            dict: None,
-            decoder: None,
-            validate_utf8,
-            value_type,
-            phantom: Default::default(),
-        }
+        decoder
     }
 
     fn set_dict(

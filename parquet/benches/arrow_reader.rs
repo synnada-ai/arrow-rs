@@ -622,6 +622,7 @@ fn create_f16_by_bytes_reader(
     }
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 fn create_decimal_by_bytes_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
@@ -629,10 +630,10 @@ fn create_decimal_by_bytes_reader(
     let physical_type = column_desc.physical_type();
     match physical_type {
         Type::BYTE_ARRAY => make_byte_array_reader(
-            ColumnValueDecoderOptions::default(),
             Box::new(page_iterator),
             column_desc,
             None,
+            ColumnValueDecoderOptions::default(),
         )
         .unwrap(),
         Type::FIXED_LEN_BYTE_ARRAY => {
@@ -649,15 +650,16 @@ fn create_fixed_len_byte_array_reader(
     make_fixed_len_byte_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 fn create_byte_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
     make_byte_array_reader(
-        ColumnValueDecoderOptions::default(),
         Box::new(page_iterator),
         column_desc,
         None,
+        ColumnValueDecoderOptions::default(),
     )
     .unwrap()
 }
@@ -667,10 +669,10 @@ fn create_byte_view_array_reader(
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
     make_byte_view_array_reader(
-        ColumnValueDecoderOptions::default(),
         Box::new(page_iterator),
         column_desc,
         None,
+        ColumnValueDecoderOptions::default(),
     )
     .unwrap()
 }
@@ -680,10 +682,10 @@ fn create_string_view_byte_array_reader(
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
     make_byte_view_array_reader(
-        ColumnValueDecoderOptions::default(),
         Box::new(page_iterator),
         column_desc,
         None,
+        ColumnValueDecoderOptions::default(),
     )
     .unwrap()
 }
@@ -696,10 +698,10 @@ fn create_string_byte_array_dictionary_reader(
     let arrow_type = DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8));
 
     make_byte_array_dictionary_reader(
-        ColumnValueDecoderOptions::default(),
         Box::new(page_iterator),
         column_desc,
         Some(arrow_type),
+        ColumnValueDecoderOptions::default(),
     )
     .unwrap()
 }

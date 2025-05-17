@@ -16,6 +16,7 @@
 // under the License.
 
 use arrow_buffer::Buffer;
+use std::ptr::read;
 
 use crate::arrow::record_reader::{
     buffer::ValuesBuffer,
@@ -87,23 +88,14 @@ where
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
+    ///
     /// Create a new [`GenericRecordReader`]
     pub fn new_with_options(options: ColumnValueDecoderOptions, desc: ColumnDescPtr) -> Self {
-        let def_levels = (desc.max_def_level() > 0)
-            .then(|| DefinitionLevelBuffer::new(&desc, packed_null_mask(&desc)));
+        let mut reader = Self::new(desc);
+        reader.column_value_decoder_options = Some(options);
 
-        let rep_levels = (desc.max_rep_level() > 0).then(Vec::new);
-
-        Self {
-            column_value_decoder_options: Some(options),
-            values: V::default(),
-            def_levels,
-            rep_levels,
-            column_reader: None,
-            column_desc: desc,
-            num_values: 0,
-            num_records: 0,
-        }
+        reader
     }
 
     /// Set the current page reader.

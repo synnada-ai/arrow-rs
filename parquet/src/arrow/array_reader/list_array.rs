@@ -31,6 +31,9 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
 /// Implementation of list array reader.
 pub struct ListArrayReader<OffsetSize: OffsetSizeTrait> {
     item_reader: Box<dyn ArrayReader>,
@@ -513,6 +516,7 @@ mod tests {
         test_list_array::<i64>()
     }
 
+    /// THIS TEST IS COMMON, MODIFIED BY ARAS
     #[test]
     fn test_nested_lists() {
         // Construct column schema
@@ -566,10 +570,10 @@ mod tests {
         .unwrap();
 
         let mut array_reader = build_array_reader(
-            ColumnValueDecoderOptions::default(),
             fields.as_ref(),
             &mask,
             &file_reader,
+            ColumnValueDecoderOptions::default(),
         )
         .unwrap();
 

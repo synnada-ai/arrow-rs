@@ -20,7 +20,6 @@ use crate::arrow::buffer::view_buffer::ViewBuffer;
 use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -32,16 +31,21 @@ use crate::util::utf8::check_valid_utf8;
 use arrow_array::{builder::make_view, ArrayRef};
 use arrow_buffer::Buffer;
 use arrow_data::ByteView;
-use arrow_schema::DataType as ArrowType;
+use arrow_schema::{DataType as ArrowType, DataType};
 use bytes::Bytes;
 use std::any::Any;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column to view types.
 pub fn make_byte_view_array_reader(
-    options: ColumnValueDecoderOptions,
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
+    options: ColumnValueDecoderOptions,
 ) -> Result<Box<dyn ArrayReader>> {
     // Check if Arrow type is specified, else create it from Parquet type
     let data_type = match arrow_type {
@@ -147,14 +151,12 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
-        let validate_utf8 =
-            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
-        Self {
-            dict: None,
-            decoder: None,
-            validate_utf8,
-        }
+        let mut decoder = Self::new(col);
+        decoder.validate_utf8 &= !options.skip_validation.get();
+
+        decoder
     }
 
     fn set_dict(
@@ -384,7 +386,7 @@ impl ByteViewArrayDecoderPlain {
                 //
                 // The implementation keeps a water mark `utf8_validation_begin` to track the beginning of the buffer that is not validated.
                 // If the length is smaller than 128, then we continue to next string.
-                // If the length is larger than 128, then we validate the buffer before the length bytes, and ve the water mark to the beginning of next string.
+                // If the length is larger than 128, then we validate the buffer before the length bytes, and move the water mark to the beginning of next string.
                 if len < 128 {
                     // fast path, move to next string.
                     // the len bytes are valid utf8.

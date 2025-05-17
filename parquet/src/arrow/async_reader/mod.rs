@@ -604,10 +604,10 @@ where
                     .await?;
 
                 let array_reader = build_array_reader(
-                    self.column_value_decoder_options.clone(),
                     self.fields.as_deref(),
                     predicate_projection,
                     &row_group,
+                    self.column_value_decoder_options.clone(),
                 )?;
 
                 selection = Some(evaluate_predicate(
@@ -659,10 +659,10 @@ where
         let reader = ParquetRecordBatchReader::new(
             batch_size,
             build_array_reader(
-                self.column_value_decoder_options.clone(),
                 self.fields.as_deref(),
                 &projection,
                 &row_group,
+                self.column_value_decoder_options.clone(),
             )?,
             selection,
         );

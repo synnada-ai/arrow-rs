@@ -16,13 +16,10 @@
 // under the License.
 
 use arrow::util::pretty::print_batches;
-use arrow_data::UnsafeFlag;
 use bytes::{Buf, Bytes};
-use parquet::arrow::arrow_reader::{
-    ArrowReaderOptions, ParquetRecordBatchReader, RowGroups, RowSelection,
-};
+use parquet::arrow::arrow_reader::{ParquetRecordBatchReader, RowGroups, RowSelection};
 use parquet::arrow::async_reader::AsyncFileReader;
-use parquet::arrow::{parquet_to_arrow_field_levels, ColumnValueDecoderOptions, ProjectionMask};
+use parquet::arrow::{parquet_to_arrow_field_levels, ProjectionMask};
 use parquet::column::page::{PageIterator, PageReader};
 use parquet::errors::{ParquetError, Result};
 use parquet::file::metadata::RowGroupMetaData;
@@ -31,6 +28,12 @@ use parquet::file::serialized_reader::SerializedPageReader;
 use std::sync::Arc;
 use tokio::fs::File;
 
+// THESE IMPORTS ARE ARAS ONLY
+use arrow_data::UnsafeFlag;
+use parquet::arrow::arrow_reader::ArrowReaderOptions;
+use parquet::arrow::ColumnValueDecoderOptions;
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let testdata = arrow::util::test_util::parquet_test_data();
@@ -107,12 +110,14 @@ impl ChunkReader for ColumnChunkData {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
 #[derive(Clone)]
 pub struct InMemoryRowGroup {
-    options: ArrowReaderOptions,
     pub metadata: RowGroupMetaData,
     mask: ProjectionMask,
     column_chunks: Vec<Option<Arc<ColumnChunkData>>>,
+    // THIS FIELD IS ARAS ONLY
+    options: ArrowReaderOptions,
 }
 
 impl RowGroups for InMemoryRowGroup {
@@ -142,6 +147,7 @@ impl RowGroups for InMemoryRowGroup {
 }
 
 impl InMemoryRowGroup {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     pub fn create(
         options: ArrowReaderOptions,
         metadata: RowGroupMetaData,
@@ -150,10 +156,10 @@ impl InMemoryRowGroup {
         let column_chunks = metadata.columns().iter().map(|_| None).collect::<Vec<_>>();
 
         Self {
-            options,
             metadata,
             mask,
             column_chunks,
+            options,
         }
     }
 
@@ -169,11 +175,11 @@ impl InMemoryRowGroup {
         )?;
 
         ParquetRecordBatchReader::try_new_with_row_groups(
-            self.options.clone(),
             &levels,
             self,
             batch_size,
             selection,
+            self.options.column_value_decoder_options(),
         )
     }
 

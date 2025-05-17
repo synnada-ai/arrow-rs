@@ -39,12 +39,15 @@ use crate::file::metadata::{ParquetMetaData, ParquetMetaDataReader};
 use crate::file::reader::{ChunkReader, SerializedPageReader};
 use crate::schema::types::SchemaDescriptor;
 
+// THESE IMPORTS ARE ARAS ONLY
 use super::decoder::ColumnValueDecoderOptions;
 
 mod filter;
 mod selection;
 pub mod statistics;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Builder for constructing Parquet readers that decode into [Apache Arrow]
 /// arrays.
 ///
@@ -113,6 +116,7 @@ pub struct ArrowReaderBuilder<T> {
 
     pub(crate) offset: Option<usize>,
 
+    /// THIS FIELD IS ARAS ONLY
     pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
@@ -123,7 +127,6 @@ impl<T> ArrowReaderBuilder<T> {
             metadata: metadata.metadata,
             schema: metadata.schema,
             fields: metadata.fields,
-            column_value_decoder_options: metadata.column_value_decoder_options,
             batch_size: 1024,
             row_groups: None,
             projection: ProjectionMask::all(),
@@ -131,6 +134,7 @@ impl<T> ArrowReaderBuilder<T> {
             selection: None,
             limit: None,
             offset: None,
+            column_value_decoder_options: metadata.column_value_decoder_options,
         }
     }
 
@@ -147,11 +151,6 @@ impl<T> ArrowReaderBuilder<T> {
     /// Returns the arrow [`SchemaRef`] for this parquet file
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
-    }
-
-    /// Returns the ColumnValueDecoderOptions
-    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
-        &self.column_value_decoder_options
     }
 
     /// Set the size of [`RecordBatch`] to produce. Defaults to 1024
@@ -286,17 +285,23 @@ impl<T> ArrowReaderBuilder<T> {
             ..self
         }
     }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Returns the ColumnValueDecoderOptions
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
+    }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Options that control how metadata is read for a parquet file
 ///
 /// See [`ArrowReaderBuilder`] for how to configure how the column data
 /// is then read from the file, including projection and filter pushdown
 #[derive(Debug, Clone, Default)]
 pub struct ArrowReaderOptions {
-    /// The options used to decode column values
-    column_value_decoder_options: ColumnValueDecoderOptions,
-
     /// Should the reader strip any user defined metadata from the Arrow schema
     skip_arrow_metadata: bool,
     /// If provided used as the schema for the file, otherwise the schema is read from the file
@@ -306,23 +311,16 @@ pub struct ArrowReaderOptions {
     /// If encryption is enabled, the file decryption properties can be provided
     #[cfg(feature = "encryption")]
     pub(crate) file_decryption_properties: Option<FileDecryptionProperties>,
+    /// THIS FIELD IS ARAS ONLY
+    ///
+    /// The options used to decode column values
+    column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl ArrowReaderOptions {
     /// Create a new [`ArrowReaderOptions`] with the default settings
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Set the [`ColumnValueDecoderOptions`] to use when decoding column values
-    pub fn with_column_value_decoder_options(
-        self,
-        column_value_decoder_options: ColumnValueDecoderOptions,
-    ) -> Self {
-        Self {
-            column_value_decoder_options,
-            ..self
-        }
     }
 
     /// Skip decoding the embedded arrow metadata (defaults to `false`)
@@ -421,8 +419,30 @@ impl ArrowReaderOptions {
             ..self
         }
     }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Get the [`ColumnValueDecoderOptions`] to use when decoding column values
+    pub fn column_value_decoder_options(&self) -> ColumnValueDecoderOptions {
+        self.column_value_decoder_options.clone()
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Set the [`ColumnValueDecoderOptions`] to use when decoding column values
+    pub fn with_column_value_decoder_options(
+        self,
+        column_value_decoder_options: ColumnValueDecoderOptions,
+    ) -> Self {
+        Self {
+            column_value_decoder_options,
+            ..self
+        }
+    }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// The metadata necessary to construct a [`ArrowReaderBuilder`]
 ///
 /// Note this structure is cheaply clone-able as it consists of several arcs.
@@ -446,6 +466,7 @@ pub struct ArrowReaderMetadata {
 
     pub(crate) fields: Option<Arc<ParquetField>>,
 
+    /// THIS FIELD IS ARAS ONLY
     pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
@@ -469,6 +490,8 @@ impl ArrowReaderMetadata {
         Self::try_new(Arc::new(metadata), options)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`ArrowReaderMetadata`]
     ///
     /// # Notes
@@ -477,7 +500,11 @@ impl ArrowReaderMetadata {
     /// See [`Self::load`] for more details.
     pub fn try_new(metadata: Arc<ParquetMetaData>, options: ArrowReaderOptions) -> Result<Self> {
         match options.supplied_schema {
-            Some(_) => Self::with_supplied_schema(options, metadata),
+            Some(supplied_schema) => Self::with_supplied_schema(
+                metadata,
+                supplied_schema.clone(),
+                options.column_value_decoder_options,
+            ),
             None => {
                 let kv_metadata = match options.skip_arrow_metadata {
                     true => None,
@@ -500,14 +527,12 @@ impl ArrowReaderMetadata {
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn with_supplied_schema(
-        options: ArrowReaderOptions,
         metadata: Arc<ParquetMetaData>,
+        supplied_schema: SchemaRef,
+        options: ColumnValueDecoderOptions,
     ) -> Result<Self> {
-        let supplied_schema = options
-            .supplied_schema
-            .expect("supplied schema should be present");
-
         let parquet_schema = metadata.file_metadata().schema_descr();
         let field_levels = parquet_to_arrow_field_levels(
             parquet_schema,
@@ -549,7 +574,7 @@ impl ArrowReaderMetadata {
                     metadata,
                     schema: supplied_schema,
                     fields: field_levels.levels.map(Arc::new),
-                    column_value_decoder_options: options.column_value_decoder_options,
+                    column_value_decoder_options: options,
                 })
             }
         }
@@ -570,6 +595,8 @@ impl ArrowReaderMetadata {
         &self.schema
     }
 
+    /// THIS METHOD IS ARAS ONLY
+    ///
     /// Returns the options used to decode column values
     pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
         &self.column_value_decoder_options
@@ -667,6 +694,8 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
         Self::new_builder(SyncReader(input), metadata)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Build a [`ParquetRecordBatchReader`]
     ///
     /// Note: this will eagerly evaluate any `RowFilter` before returning
@@ -696,10 +725,10 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
                 }
 
                 let array_reader = build_array_reader(
-                    self.column_value_decoder_options.clone(),
                     self.fields.as_deref(),
                     predicate.projection(),
                     &reader,
+                    self.column_value_decoder_options.clone(),
                 )?;
 
                 selection = Some(evaluate_predicate(
@@ -712,10 +741,10 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
         }
 
         let array_reader = build_array_reader(
-            self.column_value_decoder_options,
             self.fields.as_deref(),
             &self.projection,
             &reader,
+            self.column_value_decoder_options,
         )?;
 
         // If selection is empty, truncate
@@ -907,22 +936,24 @@ impl ParquetRecordBatchReader {
             .build()
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`ParquetRecordBatchReader`] from the provided [`RowGroups`]
     ///
     /// Note: this is a low-level interface see [`ParquetRecordBatchReader::try_new`] for a
     /// higher-level interface for reading parquet data from a file
     pub fn try_new_with_row_groups(
-        options: ArrowReaderOptions,
         levels: &FieldLevels,
         row_groups: &dyn RowGroups,
         batch_size: usize,
         selection: Option<RowSelection>,
+        options: ColumnValueDecoderOptions,
     ) -> Result<Self> {
         let array_reader = build_array_reader(
-            options.column_value_decoder_options,
             levels.levels.as_ref(),
             &ProjectionMask::all(),
             row_groups,
+            options,
         )?;
 
         Ok(Self {
@@ -1055,7 +1086,7 @@ mod tests {
     };
     use arrow_array::*;
     use arrow_buffer::{i256, ArrowNativeType, Buffer, IntervalDayTime};
-    use arrow_data::{ArrayData, ArrayDataBuilder, UnsafeFlag};
+    use arrow_data::{ArrayData, ArrayDataBuilder};
     use arrow_schema::{
         ArrowError, DataType as ArrowDataType, Field, Fields, Schema, SchemaRef, TimeUnit,
     };
@@ -1067,12 +1098,11 @@ mod tests {
     use tempfile::tempfile;
 
     use crate::arrow::arrow_reader::{
-        ArrowPredicateFn, ArrowReaderBuilder, ArrowReaderMetadata, ArrowReaderOptions,
-        ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder, RowFilter, RowSelection,
-        RowSelector,
+        ArrowPredicateFn, ArrowReaderBuilder, ArrowReaderOptions, ParquetRecordBatchReader,
+        ParquetRecordBatchReaderBuilder, RowFilter, RowSelection, RowSelector,
     };
     use crate::arrow::schema::add_encoded_arrow_schema_to_metadata;
-    use crate::arrow::{ArrowWriter, ColumnValueDecoderOptions, ProjectionMask};
+    use crate::arrow::{ArrowWriter, ProjectionMask};
     use crate::basic::{ConvertedType, Encoding, Repetition, Type as PhysicalType};
     use crate::column::reader::decoder::REPETITION_LEVELS_BATCH_SIZE;
     use crate::data_type::{
@@ -1085,6 +1115,12 @@ mod tests {
     use crate::schema::parser::parse_message_type;
     use crate::schema::types::{Type, TypePtr};
     use crate::util::test_common::rand_gen::RandGen;
+
+    // THESE IMPORTS ARE ARAS ONLY
+    use crate::arrow::arrow_reader::ArrowReaderMetadata;
+    use crate::arrow::ColumnValueDecoderOptions;
+
+    use arrow_data::UnsafeFlag;
 
     #[test]
     fn test_arrow_reader_all_columns() {
@@ -4620,54 +4656,73 @@ mod tests {
         c0.iter().zip(c1.iter()).for_each(|(l, r)| assert_eq!(l, r));
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
-    async fn test_skip_utf8_validation() {
+    async fn test_utf8_validation_toggle() {
+        // Create schema with Utf8 column
+        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
+
+        // Write invalid UTF-8 data using a BinaryArray (bypasses validation)
         let mut file = tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new(
-            "item",
-            arrow::datatypes::DataType::Utf8,
-            false,
-        )]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
+
+        // BinaryArray lets us write invalid utf8 safely
+        let invalid_utf8 = vec![Some(b"valid_entry".to_vec()), Some(vec![0xff, 0xfe, 0xfd])];
+        let binary_array = Arc::new(BinaryArray::from(invalid_utf8)) as _;
+
         let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                "hello_datafusion✨",
-                "datafusion-arrow🎷",
-                "c",
-            ]))],
+            Arc::new(Schema::new(vec![Field::new(
+                "item",
+                arrow_schema::DataType::Binary,
+                false,
+            )])),
+            vec![binary_array],
         )
         .unwrap();
+
+        let mut writer = ArrowWriter::try_new(&mut file, batch.schema(), None).unwrap();
         writer.write(&batch).unwrap();
         writer.close().unwrap();
 
-        // open file with parquet data
-        let mut skip_validation = UnsafeFlag::new();
+        // Load metadata
+        let metadata = ArrowReaderMetadata::load(&file, ArrowReaderOptions::new()).unwrap();
+
+        // With skip_utf8_validation = true (should succeed)
+        let mut skip_flag = UnsafeFlag::new();
         unsafe {
-            skip_validation.set(true);
+            skip_flag.set(true);
         }
 
-        // load metadata once
-        let meta = ArrowReaderMetadata::load(
-            &file,
-            ArrowReaderOptions::new()
-                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(skip_validation)),
-        )
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
+        let decoder_opts = ColumnValueDecoderOptions::new(skip_flag.clone());
         let mut reader = ParquetRecordBatchReaderBuilder::new_with_metadata(
             file.try_clone().unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
+            metadata.clone(),
+        );
+        reader.column_value_decoder_options = decoder_opts;
+        reader.build().unwrap();
 
-        let r = reader.next().unwrap().unwrap();
+        let batch = reader.next();
+        let col = batch.column(0).as_binary::<i32>();
+        assert_eq!(col.value(0), b"valid");
+        assert_eq!(col.value(1), &[0xff, 0xfe, 0xfd]); // invalid UTF-8, but read anyway
 
-        let arr = r.column(0).as_string::<i32>();
-        assert_eq!(arr.value(0), "hello_datafusion✨");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
+        // Step 5: With skip_utf8_validation = false (should fail)
+        let decoder_opts =
+            ColumnValueDecoderOptions::new(parquet::arrow::unsafe_utils::UnsafeFlag::default()); // skip = false
+        let arrow_opts = ArrowReaderOptions::new().with_column_value_decoder_options(decoder_opts);
+
+        let build_result =
+            ParquetRecordBatchReaderBuilder::new_with_metadata(file.try_clone().unwrap(), metadata)
+                .with_arrow_reader_options(arrow_opts)
+                .build();
+
+        assert!(build_result.is_ok());
+        let mut reader = build_result.unwrap();
+
+        // Now the actual decoding should fail
+        let result = reader.next();
+        assert!(
+            matches!(result, Some(Err(arrow::error::ArrowError::ParseError(_)))),
+            "Expected parse error due to invalid UTF-8"
+        );
     }
 }
