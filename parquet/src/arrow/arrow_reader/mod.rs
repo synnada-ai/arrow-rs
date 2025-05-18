@@ -4623,53 +4623,57 @@ mod tests {
 
     #[tokio::test]
     async fn test_skip_utf8_validation() {
+        let schema = Arc::new(Schema::new(vec![Field::new("item", arrow_schema::DataType::Binary, false)]));
+        let raw = vec![
+            Some(b"ok_1".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"ok_2".to_vec()),
+        ];
+        let binary_array = Arc::new(BinaryArray::from(raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>()));
+        let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
         let mut file = tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new(
-            "item",
-            arrow::datatypes::DataType::Utf8,
-            false,
-        )]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                "hello_datafusion✨",
-                "datafusion-arrow🎷",
-                "c",
-            ]))],
-        )
-        .unwrap();
+        let mut writer = ArrowWriter::try_new(&mut file, schema, None).unwrap();
         writer.write(&batch).unwrap();
         writer.close().unwrap();
 
-        // open file with parquet data
-        let mut skip_validation = UnsafeFlag::new();
-        unsafe {
-            skip_validation.set(true);
-        }
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load(
-            &file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, DefaultValueForInvalidUtf8::None),
+        let test_cases = vec![
+            (
+                DefaultValueForInvalidUtf8::Default("__invalid__".to_string()),
+                vec![Some("ok_1"), Some("__invalid__"), Some("ok_2")],
             ),
-        )
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut reader = ParquetRecordBatchReaderBuilder::new_with_metadata(
-            file.try_clone().unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
+            (
+                DefaultValueForInvalidUtf8::Null,
+                vec![Some("ok_1"), None, Some("ok_2")],
+            ),
+        ];
 
-        let r = reader.next().unwrap().unwrap();
+        for (default_value, expected) in test_cases {
+            let projected_schema = Arc::new(Schema::new(vec![Field::new(
+                "item",
+                arrow_schema::DataType::Utf8,
+                matches!(default_value, DefaultValueForInvalidUtf8::Null),
+            )]));
 
-        let arr = r.column(0).as_string::<i32>();
-        assert_eq!(arr.value(0), "hello_datafusion✨");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
+            let mut flag = UnsafeFlag::new();
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema.clone())
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(flag.clone(), default_value.clone()));
+
+            let metadata = ArrowReaderMetadata::load(&file, opts.clone()).unwrap();
+            let mut builder = ParquetRecordBatchReaderBuilder::new_with_metadata(file.try_clone().unwrap(), metadata);
+            builder.column_value_decoder_options = opts.column_value_decoder_options;
+            let mut reader = builder.build().unwrap();
+            let batch = reader.next().unwrap().unwrap();
+
+            let arr = batch.column(0).as_any().downcast_ref::<StringArray>().unwrap();
+            assert_eq!(arr.len(), 3);
+
+            for (i, expected_val) in expected.iter().enumerate() {
+                match expected_val {
+                    Some(expected_str) => assert_eq!(arr.value(i), *expected_str),
+                    None => assert!(arr.is_null(i), "Expected null at index {}", i),
+                }
+            }
+        }
     }
 }
