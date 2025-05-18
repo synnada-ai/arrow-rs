@@ -45,13 +45,14 @@ pub type RecordReader<T> = GenericRecordReader<Vec<<T as DataType>::T>, ColumnVa
 pub(crate) type ColumnReader<CV> =
     GenericColumnReader<RepetitionLevelDecoderImpl, DefinitionLevelBufferDecoder, CV>;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// A generic stateful column reader that delimits semantic records
 ///
 /// This type is hidden from the docs, and relies on private traits with no
 /// public implementations. As such this type signature may be changed without
 /// breaking downstream users as it can only be constructed through type aliases
 pub struct GenericRecordReader<V, CV> {
-    column_value_decoder_options: Option<ColumnValueDecoderOptions>,
     column_desc: ColumnDescPtr,
 
     values: V,
@@ -62,6 +63,8 @@ pub struct GenericRecordReader<V, CV> {
     num_values: usize,
     /// Number of buffered records
     num_records: usize,
+    /// THIS FIELD IS ARAS ONLY
+    column_value_decoder_options: Option<ColumnValueDecoderOptions>,
 }
 
 impl<V, CV> GenericRecordReader<V, CV>
@@ -69,6 +72,8 @@ where
     V: ValuesBuffer,
     CV: ColumnValueDecoder<Buffer = V>,
 {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`GenericRecordReader`]
     pub fn new(desc: ColumnDescPtr) -> Self {
         let def_levels = (desc.max_def_level() > 0)
@@ -77,7 +82,6 @@ where
         let rep_levels = (desc.max_rep_level() > 0).then(Vec::new);
 
         Self {
-            column_value_decoder_options: None,
             values: V::default(),
             def_levels,
             rep_levels,
@@ -85,10 +89,11 @@ where
             column_desc: desc,
             num_values: 0,
             num_records: 0,
+            column_value_decoder_options: None,
         }
     }
 
-    /// THIS FUNCTION IS ARAS ONLY
+    /// THIS METHOD IS ARAS ONLY
     ///
     /// Create a new [`GenericRecordReader`]
     pub fn new_with_options(options: ColumnValueDecoderOptions, desc: ColumnDescPtr) -> Self {
@@ -98,6 +103,8 @@ where
         reader
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Set the current page reader.
     pub fn set_page_reader(&mut self, page_reader: Box<dyn PageReader>) -> Result<()> {
         let descr = &self.column_desc;

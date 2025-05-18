@@ -20,11 +20,14 @@
 mod delta_byte_array;
 mod dictionary_index;
 
-use arrow_data::UnsafeFlag;
-
 pub use delta_byte_array::DeltaByteArrayDecoder;
 pub use dictionary_index::DictIndexDecoder;
 
+// THESE IMPORTS ARE ARAS ONLY
+use arrow_data::UnsafeFlag;
+
+/// THIS STRUCT IS ARAS ONLY
+///
 /// Options for column value decoding behavior.
 ///
 /// Contains settings that control how column values are decoded, such as

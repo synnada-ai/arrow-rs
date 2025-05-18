@@ -169,8 +169,6 @@ pub use self::async_writer::AsyncArrowWriter;
 use crate::schema::types::{SchemaDescriptor, Type};
 use arrow_schema::{FieldRef, Schema};
 
-pub use self::decoder::ColumnValueDecoderOptions;
-
 // continue to export deprecated methods until they are removed
 #[allow(deprecated)]
 pub use self::schema::arrow_to_parquet_schema;
@@ -179,6 +177,9 @@ pub use self::schema::{
     add_encoded_arrow_schema_to_metadata, encode_arrow_schema, parquet_to_arrow_field_levels,
     parquet_to_arrow_schema, parquet_to_arrow_schema_by_columns, ArrowSchemaConverter, FieldLevels,
 };
+
+/// THIS EXPORT IS ARAS ONLY
+pub use self::decoder::ColumnValueDecoderOptions;
 
 /// Schema metadata key used to store serialized Arrow IPC schema
 pub const ARROW_SCHEMA_META_KEY: &str = "ARROW:schema";
