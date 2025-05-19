@@ -261,7 +261,6 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
             .ok_or_else(|| general_err!("no decoder set"))?;
 
         let non_null_mask = decoder.read(out, num_values, self.dict.as_ref(), self.non_null_mask.as_ref())?;
-        println!("non_null_mask14: {:?}", non_null_mask);
         Ok(non_null_mask.len())
     }
 
@@ -271,9 +270,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         .as_mut()
         .ok_or_else(|| general_err!("no decoder set"))?;
 
-        let non_null_mask = decoder.read(out, num_values, self.dict.as_ref(), self.non_null_mask.as_ref())?;
-        // println!("non_null_mask24: {:?}", non_null_mask);
-        Ok(non_null_mask)
+        decoder.read(out, num_values, self.dict.as_ref(), self.non_null_mask.as_ref())
     }
 
     fn skip_values(&mut self, num_values: usize) -> Result<usize> {

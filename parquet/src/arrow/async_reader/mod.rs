@@ -2521,7 +2521,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_utf8_validation_with_default_1() {
-        // let mut file = OpenOptions::new().write(true).read(true).create(true).open("/Users/jayzhan/arrow-rs/target/tests/test").unwrap();
         let mut file = tempfile::tempfile().unwrap();
         let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
         let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
@@ -2535,9 +2534,7 @@ mod tests {
         )
         .unwrap();
         writer.write(&batch).unwrap();
-        // writer.flush().unwrap();
         let _meta = writer.close().unwrap();
-        // println!("meta: {:?}", meta.num_rows);
 
         file.seek(SeekFrom::Start(0)).unwrap();
 
@@ -2577,7 +2574,6 @@ mod tests {
         let r = a.next().await.unwrap().unwrap();
 
         let arr = r.column(0).as_string::<i32>();
-        println!("arr: {:?}", arr);
         assert_eq!(arr.value(0), "default_value");
         assert_eq!(arr.value(1), "datafusion-arrow🎷");
         assert_eq!(arr.value(2), "c");
@@ -2586,7 +2582,6 @@ mod tests {
     // first byte is smaller than -0x40
     #[tokio::test]
     async fn test_utf8_validation_with_default_2() {
-        // let mut file = OpenOptions::new().write(true).read(true).create(true).open("/Users/jayzhan/arrow-rs/target/tests/test").unwrap();
         let mut file = tempfile::tempfile().unwrap();
         let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
         let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
@@ -2600,9 +2595,7 @@ mod tests {
         )
         .unwrap();
         writer.write(&batch).unwrap();
-        // writer.flush().unwrap();
         let _meta = writer.close().unwrap();
-        // println!("meta: {:?}", meta.num_rows);
 
         file.seek(SeekFrom::Start(0)).unwrap();
 
@@ -2641,7 +2634,6 @@ mod tests {
         let r = a.next().await.unwrap().unwrap();
 
         let arr = r.column(0).as_string::<i32>();
-        println!("arr: {:?}", arr);
         assert_eq!(arr.value(0), "default_value");
         assert_eq!(arr.value(1), "datafusion-arrow🎷");
         assert_eq!(arr.value(2), "c");
@@ -2649,7 +2641,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_utf8_validation_with_default_null() {
-        // let mut file = OpenOptions::new().write(true).read(true).create(true).open("/Users/jayzhan/arrow-rs/target/tests/test").unwrap();
         let mut file = tempfile::tempfile().unwrap();
         let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
         let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
@@ -2664,9 +2655,7 @@ mod tests {
         )
         .unwrap();
         writer.write(&batch).unwrap();
-        // writer.flush().unwrap();
         let _meta = writer.close().unwrap();
-        // println!("meta: {:?}", meta.num_rows);
 
         file.seek(SeekFrom::Start(0)).unwrap();
 
@@ -2706,11 +2695,9 @@ mod tests {
         let r = a.next().await.unwrap().unwrap();
 
         let arr = r.column(0).as_string::<i32>();
-        println!("Arr: {:?}", arr);
 
         assert!(arr.is_null(0));
         assert!(arr.is_null(1));
-        // assert_eq!(arr.value(0), "gello_datafusion✨");
         assert_eq!(arr.value(2), "datafusion-arrow🎷");
         assert_eq!(arr.value(3), "c");
     }

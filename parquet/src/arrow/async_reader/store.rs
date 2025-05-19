@@ -196,10 +196,10 @@ impl AsyncFileReader for ParquetObjectReader {
     // `Self::get_bytes`.
     fn get_metadata<'a>(
         &'a mut self,
-        options: Option<&'a ArrowReaderOptions>,
+        _options: Option<&'a ArrowReaderOptions>,
     ) -> BoxFuture<'a, Result<Arc<ParquetMetaData>>> {
         Box::pin(async move {
-            let mut metadata = ParquetMetaDataReader::new()
+            let metadata = ParquetMetaDataReader::new()
                 .with_column_indexes(self.preload_column_index)
                 .with_offset_indexes(self.preload_offset_index)
                 .with_prefetch_hint(self.metadata_size_hint);

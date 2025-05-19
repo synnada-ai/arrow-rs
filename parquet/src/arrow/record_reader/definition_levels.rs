@@ -200,7 +200,6 @@ impl DefinitionLevelDecoder for DefinitionLevelBufferDecoder {
                 assert_eq!(self.max_level, *max_level);
                 debug_assert_eq!(levels.len(), start_offset + num_levels);
 
-                // TODO: handle non-null-mask case
                 let mut values_read = 0;
 
                 for (i, l) in levels.iter().enumerate().skip(start_offset) {
