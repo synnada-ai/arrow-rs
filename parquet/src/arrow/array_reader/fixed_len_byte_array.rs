@@ -314,7 +314,7 @@ impl ColumnValueDecoder for ValueDecoder {
         }
     }
 
-    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr, _data_type: ArrowType) -> Self {
         Self::new(col)
     }
 

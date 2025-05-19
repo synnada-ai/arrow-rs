@@ -167,6 +167,7 @@ pub use self::async_reader::ParquetRecordBatchStreamBuilder;
 #[cfg(feature = "async")]
 pub use self::async_writer::AsyncArrowWriter;
 use crate::schema::types::{SchemaDescriptor, Type};
+pub use arrow_schema::DataType as ArrowDataType;
 use arrow_schema::{FieldRef, Schema};
 
 pub use self::decoder::{ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};

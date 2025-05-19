@@ -16,6 +16,7 @@
 // under the License.
 
 use arrow_buffer::Buffer;
+use arrow_schema::DataType as ArrowType;
 
 use crate::arrow::record_reader::{
     buffer::ValuesBuffer,
@@ -52,6 +53,8 @@ pub(crate) type ColumnReader<CV> =
 pub struct GenericRecordReader<V, CV> {
     column_value_decoder_options: Option<ColumnValueDecoderOptions>,
     column_desc: ColumnDescPtr,
+    // datatype to read as
+    data_type: Option<ArrowType>,
 
     values: V,
     def_levels: Option<DefinitionLevelBuffer>,
@@ -82,13 +85,18 @@ where
             rep_levels,
             column_reader: None,
             column_desc: desc,
+            data_type: None,
             num_values: 0,
             num_records: 0,
         }
     }
 
     /// Create a new [`GenericRecordReader`]
-    pub fn new_with_options(options: ColumnValueDecoderOptions, desc: ColumnDescPtr) -> Self {
+    pub fn new_with_options(
+        options: ColumnValueDecoderOptions,
+        desc: ColumnDescPtr,
+        data_type: ArrowType,
+    ) -> Self {
         let def_levels = (desc.max_def_level() > 0)
             .then(|| DefinitionLevelBuffer::new(&desc, packed_null_mask(&desc)));
 
@@ -101,6 +109,7 @@ where
             rep_levels,
             column_reader: None,
             column_desc: desc,
+            data_type: Some(data_type),
             num_values: 0,
             num_records: 0,
         }
@@ -111,7 +120,7 @@ where
         let descr = &self.column_desc;
 
         let values_decoder = if let Some(options) = self.column_value_decoder_options.take() {
-            CV::new_with_options(options, descr)
+            CV::new_with_options(options, descr, self.data_type.clone().unwrap())
         } else {
             CV::new(descr)
         };

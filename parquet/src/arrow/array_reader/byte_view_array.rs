@@ -54,7 +54,7 @@ pub fn make_byte_view_array_reader(
 
     match data_type {
         ArrowType::BinaryView | ArrowType::Utf8View => {
-            let reader = GenericRecordReader::new_with_options(options, column_desc);
+            let reader = GenericRecordReader::new_with_options(options, column_desc, data_type.clone());
             Ok(Box::new(ByteViewArrayReader::new(pages, data_type, reader)))
         }
 
@@ -147,9 +147,9 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         }
     }
 
-    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr, data_type: ArrowType) -> Self {
         let validate_utf8 =
-            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
+            !options.skip_validation.get() && (col.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8);
         Self {
             dict: None,
             decoder: None,

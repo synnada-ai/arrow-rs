@@ -58,7 +58,7 @@ pub fn make_byte_array_reader(
         | ArrowType::Utf8
         | ArrowType::Decimal128(_, _)
         | ArrowType::Decimal256(_, _) => {
-            let reader = GenericRecordReader::new_with_options(options, column_desc);
+            let reader = GenericRecordReader::new_with_options(options, column_desc, data_type.clone());
             Ok(Box::new(ByteArrayReader::<i32>::new(
                 pages, data_type, reader,
             )))
@@ -191,9 +191,9 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         }
     }
 
-    fn new_with_options(options: ColumnValueDecoderOptions, desc: &ColumnDescPtr) -> Self {
+    fn new_with_options(options: ColumnValueDecoderOptions, desc: &ColumnDescPtr, data_type: ArrowType) -> Self {
         let validate_utf8 =
-            !options.skip_validation.get() && desc.converted_type() == ConvertedType::UTF8;
+            !options.skip_validation.get() && (desc.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8);
 
         Self {
             dict: None,

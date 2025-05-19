@@ -49,7 +49,7 @@ macro_rules! make_reader {
         match (($k, $v)) {
             $(
                 ($key_arrow, $value_arrow) => {
-                    let reader = GenericRecordReader::new_with_options($options, $column_desc);
+                    let reader = GenericRecordReader::new_with_options($options, $column_desc, $data_type.clone());
                     Ok(Box::new(ByteArrayDictionaryReader::<$key_type, $value_type>::new(
                         $pages, $data_type, reader,
                     )))
@@ -248,12 +248,12 @@ where
         }
     }
 
-    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr, data_type: ArrowType) -> Self {
+        let is_utf8_type = col.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8;
         let validate_utf8 =
-            !options.skip_validation.get() && col.converted_type() == ConvertedType::UTF8;
-        println!("validate_utf8: {}", validate_utf8);
+            !options.skip_validation.get() && is_utf8_type;
 
-        let value_type = match (V::IS_LARGE, col.converted_type() == ConvertedType::UTF8) {
+        let value_type = match (V::IS_LARGE, is_utf8_type) {
             (true, true) => ArrowType::LargeUtf8,
             (true, false) => ArrowType::LargeBinary,
             (false, true) => ArrowType::Utf8,

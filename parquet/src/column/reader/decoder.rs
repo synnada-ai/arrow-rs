@@ -106,6 +106,7 @@ pub trait ColumnValueDecoder {
     fn new_with_options(
         options: crate::arrow::ColumnValueDecoderOptions,
         col: &ColumnDescPtr,
+        data_type: crate::arrow::ArrowDataType,
     ) -> Self;
 
     /// Set the current dictionary page
@@ -180,6 +181,7 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
     fn new_with_options(
         _options: crate::arrow::ColumnValueDecoderOptions,
         col: &ColumnDescPtr,
+        _data_type: crate::arrow::ArrowDataType,
     ) -> Self {
         Self::new(col)
     }
