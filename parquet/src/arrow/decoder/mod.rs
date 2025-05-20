@@ -30,7 +30,7 @@ pub use dictionary_index::DictIndexDecoder;
 /// This enum is used to specify the default value for invalid UTF-8 strings
 /// when decoding column values. It can be set to a specific default string,
 /// a null value, or no default value at all.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum DefaultValueForInvalidUtf8 {
     /// Default value for invalid UTF-8 strings.
     Default(String),
@@ -52,6 +52,8 @@ pub enum DefaultValueForInvalidUtf8 {
 /// result in incorrect data if the input is malformed.
 #[derive(Debug, Default, Clone)]
 pub struct ColumnValueDecoderOptions {
+    /// These two are kept seperately to lower the cost of maintaining the upstream diff because UnsafeFlag is upstream feature.
+    ///
     /// Skip validation of the values read from the column.
     pub skip_validation: UnsafeFlag,
     /// Default value of non-valid UTF-8 strings.
@@ -61,6 +63,13 @@ pub struct ColumnValueDecoderOptions {
 impl ColumnValueDecoderOptions {
     /// Create a new `ColumnValueDecoderOptions` with the given `skip_validation` flag.
     pub fn new(skip_validation: UnsafeFlag, default_value: DefaultValueForInvalidUtf8) -> Self {
+        if skip_validation.get() && default_value != DefaultValueForInvalidUtf8::None {
+            // If skip_validation is set, we should not set a default value
+            // for invalid UTF-8 strings. This is because the decoder will
+            // not validate the values
+            panic!("Invalid setting");
+        }
+
         Self {
             skip_validation,
             default_value,
