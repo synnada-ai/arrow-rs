@@ -21,6 +21,7 @@ use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::buffer::ValuesBuffer;
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
+use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{Encoding, Type};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -313,6 +314,10 @@ impl ColumnValueDecoder for ValueDecoder {
         }
     }
 
+    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr, _data_type: ArrowType) -> Self {
+        Self::new(col)
+    }
+
     fn set_dict(
         &mut self,
         buf: Bytes,
@@ -437,6 +442,11 @@ impl ColumnValueDecoder for ValueDecoder {
                 Ok(to_read)
             }
         }
+    }
+
+    fn read_with_null_mask(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<Vec<bool>> {
+        let len = self.read(out, num_values)?;
+        Ok(vec![true; len])
     }
 
     fn skip_values(&mut self, num_values: usize) -> Result<usize> {
