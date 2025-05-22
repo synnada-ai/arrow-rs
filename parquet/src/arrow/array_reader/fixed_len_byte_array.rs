@@ -39,6 +39,9 @@ use std::any::Any;
 use std::ops::Range;
 use std::sync::Arc;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
 /// Returns an [`ArrayReader`] that decodes the provided fixed length byte array column
 pub fn make_fixed_len_byte_array_reader(
     pages: Box<dyn PageIterator>,
@@ -311,6 +314,11 @@ impl ColumnValueDecoder for ValueDecoder {
             dict_page: None,
             decoder: None,
         }
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        Self::new(col)
     }
 
     fn set_dict(

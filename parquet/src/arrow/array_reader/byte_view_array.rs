@@ -31,15 +31,21 @@ use crate::util::utf8::check_valid_utf8;
 use arrow_array::{builder::make_view, ArrayRef};
 use arrow_buffer::Buffer;
 use arrow_data::ByteView;
-use arrow_schema::DataType as ArrowType;
+use arrow_schema::{DataType as ArrowType, DataType};
 use bytes::Bytes;
 use std::any::Any;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column to view types.
 pub fn make_byte_view_array_reader(
     pages: Box<dyn PageIterator>,
     column_desc: ColumnDescPtr,
     arrow_type: Option<ArrowType>,
+    options: ColumnValueDecoderOptions,
 ) -> Result<Box<dyn ArrayReader>> {
     // Check if Arrow type is specified, else create it from Parquet type
     let data_type = match arrow_type {
@@ -52,7 +58,7 @@ pub fn make_byte_view_array_reader(
 
     match data_type {
         ArrowType::BinaryView | ArrowType::Utf8View => {
-            let reader = GenericRecordReader::new(column_desc);
+            let reader = GenericRecordReader::new_with_options(options, column_desc);
             Ok(Box::new(ByteViewArrayReader::new(pages, data_type, reader)))
         }
 
@@ -143,6 +149,14 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
             decoder: None,
             validate_utf8,
         }
+    }
+
+    /// THIS FUNCTION IS ARAS ONLY
+    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr) -> Self {
+        let mut decoder = Self::new(col);
+        decoder.validate_utf8 &= !options.skip_validation.get();
+
+        decoder
     }
 
     fn set_dict(

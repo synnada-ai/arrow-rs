@@ -31,6 +31,9 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
 /// Implementation of list array reader.
 pub struct ListArrayReader<OffsetSize: OffsetSizeTrait> {
     item_reader: Box<dyn ArrayReader>,
@@ -250,7 +253,9 @@ mod tests {
     use crate::arrow::array_reader::list_array::ListArrayReader;
     use crate::arrow::array_reader::test_util::InMemoryArrayReader;
     use crate::arrow::schema::parquet_to_arrow_schema_and_fields;
-    use crate::arrow::{parquet_to_arrow_schema, ArrowWriter, ProjectionMask};
+    use crate::arrow::{
+        parquet_to_arrow_schema, ArrowWriter, ColumnValueDecoderOptions, ProjectionMask,
+    };
     use crate::file::properties::WriterProperties;
     use crate::file::reader::{FileReader, SerializedFileReader};
     use crate::schema::parser::parse_message_type;
@@ -511,6 +516,7 @@ mod tests {
         test_list_array::<i64>()
     }
 
+    /// THIS TEST IS COMMON, MODIFIED BY ARAS
     #[test]
     fn test_nested_lists() {
         // Construct column schema
@@ -563,7 +569,13 @@ mod tests {
         )
         .unwrap();
 
-        let mut array_reader = build_array_reader(fields.as_ref(), &mask, &file_reader).unwrap();
+        let mut array_reader = build_array_reader(
+            fields.as_ref(),
+            &mask,
+            &file_reader,
+            ColumnValueDecoderOptions::default(),
+        )
+        .unwrap();
 
         let batch = array_reader.next_batch(100).unwrap();
         assert_eq!(batch.data_type(), array_reader.get_data_type());

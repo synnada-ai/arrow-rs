@@ -65,6 +65,9 @@ use crate::arrow::schema::ParquetField;
 #[cfg(feature = "object_store")]
 pub use store::*;
 
+// THESE IMPORTS ARE ARAS ONLY
+use super::decoder::ColumnValueDecoderOptions;
+
 /// The asynchronous interface used by [`ParquetRecordBatchStream`] to read parquet files
 ///
 /// Notes:
@@ -478,6 +481,8 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
         Ok(Some(Sbbf::new(&bitset)))
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Build a new [`ParquetRecordBatchStream`]
     ///
     /// See examples on [`ParquetRecordBatchStreamBuilder::new`]
@@ -502,6 +507,7 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
         let batch_size = self
             .batch_size
             .min(self.metadata.file_metadata().num_rows() as usize);
+
         let reader_factory = ReaderFactory {
             input: self.input.0,
             filter: self.filter,
@@ -509,6 +515,7 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
             fields: self.fields,
             limit: self.limit,
             offset: self.offset,
+            column_value_decoder_options: self.column_value_decoder_options,
         };
 
         // Ensure schema of ParquetRecordBatchStream respects projection, and does
@@ -551,12 +558,16 @@ struct ReaderFactory<T> {
     limit: Option<usize>,
 
     offset: Option<usize>,
+
+    column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl<T> ReaderFactory<T>
 where
     T: AsyncFileReader + Send,
 {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Reads the next row group with the provided `selection`, `projection` and `batch_size`
     ///
     /// Note: this captures self so that the resulting future has a static lifetime
@@ -597,8 +608,12 @@ where
                     .fetch(&mut self.input, predicate_projection, selection.as_ref())
                     .await?;
 
-                let array_reader =
-                    build_array_reader(self.fields.as_deref(), predicate_projection, &row_group)?;
+                let array_reader = build_array_reader(
+                    self.fields.as_deref(),
+                    predicate_projection,
+                    &row_group,
+                    self.column_value_decoder_options.clone(),
+                )?;
 
                 selection = Some(evaluate_predicate(
                     batch_size,
@@ -648,7 +663,12 @@ where
 
         let reader = ParquetRecordBatchReader::new(
             batch_size,
-            build_array_reader(self.fields.as_deref(), &projection, &row_group)?,
+            build_array_reader(
+                self.fields.as_deref(),
+                &projection,
+                &row_group,
+                self.column_value_decoder_options.clone(),
+            )?,
             selection,
         );
 
@@ -1772,6 +1792,7 @@ mod tests {
         assert_eq!(total_rows, 730);
     }
 
+    /// THIS TEST IS COMMON, MODIFIED BY ARAS
     #[tokio::test]
     async fn test_in_memory_row_group_sparse() {
         let testdata = arrow::util::test_util::parquet_test_data();
@@ -1827,6 +1848,7 @@ mod tests {
             filter: None,
             limit: None,
             offset: None,
+            column_value_decoder_options: ColumnValueDecoderOptions::default(),
         };
 
         let mut skip = true;

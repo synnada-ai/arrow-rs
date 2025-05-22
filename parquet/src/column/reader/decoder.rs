@@ -94,6 +94,13 @@ pub trait ColumnValueDecoder {
     /// Create a new [`ColumnValueDecoder`]
     fn new(col: &ColumnDescPtr) -> Self;
 
+    /// THIS METHOD IS ARAS ONLY
+    #[cfg(feature = "arrow")]
+    fn new_with_options(
+        col: &ColumnDescPtr,
+        options: crate::arrow::ColumnValueDecoderOptions,
+    ) -> Self;
+
     /// Set the current dictionary page
     fn set_dict(
         &mut self,
@@ -155,6 +162,15 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
             current_encoding: None,
             decoders: Default::default(),
         }
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    #[cfg(feature = "arrow")]
+    fn new_with_options(
+        col: &ColumnDescPtr,
+        _options: crate::arrow::ColumnValueDecoderOptions,
+    ) -> Self {
+        Self::new(col)
     }
 
     fn set_dict(

@@ -39,10 +39,15 @@ use crate::file::metadata::{ParquetMetaData, ParquetMetaDataReader};
 use crate::file::reader::{ChunkReader, SerializedPageReader};
 use crate::schema::types::SchemaDescriptor;
 
+// THESE IMPORTS ARE ARAS ONLY
+use super::decoder::ColumnValueDecoderOptions;
+
 mod filter;
 mod selection;
 pub mod statistics;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Builder for constructing Parquet readers that decode into [Apache Arrow]
 /// arrays.
 ///
@@ -110,6 +115,9 @@ pub struct ArrowReaderBuilder<T> {
     pub(crate) limit: Option<usize>,
 
     pub(crate) offset: Option<usize>,
+
+    /// THIS FIELD IS ARAS ONLY
+    pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl<T> ArrowReaderBuilder<T> {
@@ -126,6 +134,7 @@ impl<T> ArrowReaderBuilder<T> {
             selection: None,
             limit: None,
             offset: None,
+            column_value_decoder_options: metadata.column_value_decoder_options,
         }
     }
 
@@ -276,8 +285,17 @@ impl<T> ArrowReaderBuilder<T> {
             ..self
         }
     }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Returns the ColumnValueDecoderOptions
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
+    }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Options that control how metadata is read for a parquet file
 ///
 /// See [`ArrowReaderBuilder`] for how to configure how the column data
@@ -293,6 +311,10 @@ pub struct ArrowReaderOptions {
     /// If encryption is enabled, the file decryption properties can be provided
     #[cfg(feature = "encryption")]
     pub(crate) file_decryption_properties: Option<FileDecryptionProperties>,
+    /// THIS FIELD IS ARAS ONLY
+    ///
+    /// The options used to decode column values
+    column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl ArrowReaderOptions {
@@ -397,8 +419,30 @@ impl ArrowReaderOptions {
             ..self
         }
     }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Get the [`ColumnValueDecoderOptions`] to use when decoding column values
+    pub fn column_value_decoder_options(&self) -> ColumnValueDecoderOptions {
+        self.column_value_decoder_options.clone()
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Set the [`ColumnValueDecoderOptions`] to use when decoding column values
+    pub fn with_column_value_decoder_options(
+        self,
+        column_value_decoder_options: ColumnValueDecoderOptions,
+    ) -> Self {
+        Self {
+            column_value_decoder_options,
+            ..self
+        }
+    }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// The metadata necessary to construct a [`ArrowReaderBuilder`]
 ///
 /// Note this structure is cheaply clone-able as it consists of several arcs.
@@ -421,6 +465,9 @@ pub struct ArrowReaderMetadata {
     pub(crate) schema: SchemaRef,
 
     pub(crate) fields: Option<Arc<ParquetField>>,
+
+    /// THIS FIELD IS ARAS ONLY
+    pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl ArrowReaderMetadata {
@@ -443,6 +490,8 @@ impl ArrowReaderMetadata {
         Self::try_new(Arc::new(metadata), options)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`ArrowReaderMetadata`]
     ///
     /// # Notes
@@ -451,7 +500,11 @@ impl ArrowReaderMetadata {
     /// See [`Self::load`] for more details.
     pub fn try_new(metadata: Arc<ParquetMetaData>, options: ArrowReaderOptions) -> Result<Self> {
         match options.supplied_schema {
-            Some(supplied_schema) => Self::with_supplied_schema(metadata, supplied_schema.clone()),
+            Some(supplied_schema) => Self::with_supplied_schema(
+                metadata,
+                supplied_schema.clone(),
+                options.column_value_decoder_options,
+            ),
             None => {
                 let kv_metadata = match options.skip_arrow_metadata {
                     true => None,
@@ -468,14 +521,17 @@ impl ArrowReaderMetadata {
                     metadata,
                     schema: Arc::new(schema),
                     fields: fields.map(Arc::new),
+                    column_value_decoder_options: options.column_value_decoder_options,
                 })
             }
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn with_supplied_schema(
         metadata: Arc<ParquetMetaData>,
         supplied_schema: SchemaRef,
+        options: ColumnValueDecoderOptions,
     ) -> Result<Self> {
         let parquet_schema = metadata.file_metadata().schema_descr();
         let field_levels = parquet_to_arrow_field_levels(
@@ -518,6 +574,7 @@ impl ArrowReaderMetadata {
                     metadata,
                     schema: supplied_schema,
                     fields: field_levels.levels.map(Arc::new),
+                    column_value_decoder_options: options,
                 })
             }
         }
@@ -536,6 +593,13 @@ impl ArrowReaderMetadata {
     /// Returns the arrow [`SchemaRef`] for this parquet file
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Returns the options used to decode column values
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
     }
 }
 
@@ -630,6 +694,8 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
         Self::new_builder(SyncReader(input), metadata)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Build a [`ParquetRecordBatchReader`]
     ///
     /// Note: this will eagerly evaluate any `RowFilter` before returning
@@ -658,8 +724,12 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
                     break;
                 }
 
-                let array_reader =
-                    build_array_reader(self.fields.as_deref(), predicate.projection(), &reader)?;
+                let array_reader = build_array_reader(
+                    self.fields.as_deref(),
+                    predicate.projection(),
+                    &reader,
+                    self.column_value_decoder_options.clone(),
+                )?;
 
                 selection = Some(evaluate_predicate(
                     batch_size,
@@ -670,7 +740,12 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
             }
         }
 
-        let array_reader = build_array_reader(self.fields.as_deref(), &self.projection, &reader)?;
+        let array_reader = build_array_reader(
+            self.fields.as_deref(),
+            &self.projection,
+            &reader,
+            self.column_value_decoder_options,
+        )?;
 
         // If selection is empty, truncate
         if !selects_any(selection.as_ref()) {
@@ -861,6 +936,8 @@ impl ParquetRecordBatchReader {
             .build()
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`ParquetRecordBatchReader`] from the provided [`RowGroups`]
     ///
     /// Note: this is a low-level interface see [`ParquetRecordBatchReader::try_new`] for a
@@ -870,9 +947,14 @@ impl ParquetRecordBatchReader {
         row_groups: &dyn RowGroups,
         batch_size: usize,
         selection: Option<RowSelection>,
+        options: ColumnValueDecoderOptions,
     ) -> Result<Self> {
-        let array_reader =
-            build_array_reader(levels.levels.as_ref(), &ProjectionMask::all(), row_groups)?;
+        let array_reader = build_array_reader(
+            levels.levels.as_ref(),
+            &ProjectionMask::all(),
+            row_groups,
+            options,
+        )?;
 
         Ok(Self {
             batch_size,
@@ -1033,6 +1115,12 @@ mod tests {
     use crate::schema::parser::parse_message_type;
     use crate::schema::types::{Type, TypePtr};
     use crate::util::test_common::rand_gen::RandGen;
+
+    // THESE IMPORTS ARE ARAS ONLY
+    use crate::arrow::arrow_reader::ArrowReaderMetadata;
+    use crate::arrow::ColumnValueDecoderOptions;
+
+    use arrow_data::UnsafeFlag;
 
     #[test]
     fn test_arrow_reader_all_columns() {

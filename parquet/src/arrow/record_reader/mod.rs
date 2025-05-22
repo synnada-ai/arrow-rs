@@ -16,6 +16,7 @@
 // under the License.
 
 use arrow_buffer::Buffer;
+use std::ptr::read;
 
 use crate::arrow::record_reader::{
     buffer::ValuesBuffer,
@@ -33,6 +34,8 @@ use crate::data_type::DataType;
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
 
+use super::ColumnValueDecoderOptions;
+
 pub(crate) mod buffer;
 mod definition_levels;
 
@@ -42,6 +45,8 @@ pub type RecordReader<T> = GenericRecordReader<Vec<<T as DataType>::T>, ColumnVa
 pub(crate) type ColumnReader<CV> =
     GenericColumnReader<RepetitionLevelDecoderImpl, DefinitionLevelBufferDecoder, CV>;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// A generic stateful column reader that delimits semantic records
 ///
 /// This type is hidden from the docs, and relies on private traits with no
@@ -58,6 +63,8 @@ pub struct GenericRecordReader<V, CV> {
     num_values: usize,
     /// Number of buffered records
     num_records: usize,
+    /// THIS FIELD IS ARAS ONLY
+    column_value_decoder_options: Option<ColumnValueDecoderOptions>,
 }
 
 impl<V, CV> GenericRecordReader<V, CV>
@@ -65,6 +72,8 @@ where
     V: ValuesBuffer,
     CV: ColumnValueDecoder<Buffer = V>,
 {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`GenericRecordReader`]
     pub fn new(desc: ColumnDescPtr) -> Self {
         let def_levels = (desc.max_def_level() > 0)
@@ -80,13 +89,31 @@ where
             column_desc: desc,
             num_values: 0,
             num_records: 0,
+            column_value_decoder_options: None,
         }
     }
 
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Create a new [`GenericRecordReader`]
+    pub fn new_with_options(options: ColumnValueDecoderOptions, desc: ColumnDescPtr) -> Self {
+        let mut reader = Self::new(desc);
+        reader.column_value_decoder_options = Some(options);
+
+        reader
+    }
+
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Set the current page reader.
     pub fn set_page_reader(&mut self, page_reader: Box<dyn PageReader>) -> Result<()> {
         let descr = &self.column_desc;
-        let values_decoder = CV::new(descr);
+
+        let values_decoder = if let Some(options) = self.column_value_decoder_options.take() {
+            CV::new_with_options(options, descr)
+        } else {
+            CV::new(descr)
+        };
 
         let def_level_decoder = (descr.max_def_level() != 0).then(|| {
             DefinitionLevelBufferDecoder::new(descr.max_def_level(), packed_null_mask(descr))
