@@ -32,6 +32,8 @@ use parquet::arrow::ColumnValueDecoderOptions;
 use parquet::arrow::DefaultValueForInvalidUtf8;
 use std::sync::Arc;
 
+const N_ROWS: usize = 1024;
+
 fn generate_invalid_file() -> (std::fs::File, Vec<Option<Vec<u8>>>) {
     let schema = Arc::new(Schema::new(vec![Field::new(
         "item",
@@ -39,14 +41,9 @@ fn generate_invalid_file() -> (std::fs::File, Vec<Option<Vec<u8>>>) {
         true,
     )]));
 
-    let mut raw = vec![Some(b"ok".to_vec()); 100];
+    let mut raw = vec![Some(b"ok".to_vec()); N_ROWS];
     raw[1] = Some(vec![0xff, 0xfe]); // Invalid UTF-8
 
-    // let raw = [
-    //     Some(b"ok_1".to_vec()),
-    //     Some(vec![0xff, 0xfe]), // Invalid UTF-8
-    //     Some(b"ok_3".to_vec()),
-    // ];
     let binary_array = Arc::new(BinaryArray::from(
         raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
     ));
@@ -65,11 +62,7 @@ fn generate_valid_file() -> std::fs::File {
         arrow_schema::DataType::Binary,
         true,
     )]));
-    let raw = [
-        Some(b"ok_1".to_vec()),
-        Some(b"ok_2".to_vec()), // Invalid UTF-8
-        Some(b"ok_3".to_vec()),
-    ];
+    let raw = vec![Some(b"ok".to_vec()); N_ROWS];
     let binary_array = Arc::new(BinaryArray::from(
         raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
     ));
@@ -84,17 +77,6 @@ fn generate_valid_file() -> std::fs::File {
 
 fn criterion_benchmark(c: &mut Criterion) {
     let (file, raw) = generate_invalid_file();
-
-    // let test_cases = vec![
-    //     (
-    //         DefaultValueForInvalidUtf8::Default("__invalid__".to_string()),
-    //         vec![Some("ok_1"), Some("__invalid__"), Some("ok_3")],
-    //     ),
-    //     (
-    //         DefaultValueForInvalidUtf8::Null,
-    //         vec![Some("ok_1"), None, Some("ok_3")],
-    //     ),
-    // ];
 
     c.bench_function("invalid_with_null", |b| {
         let mut expected = vec![];
@@ -150,13 +132,14 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let file = generate_valid_file();
 
+    let expected = vec![Some("ok"); N_ROWS];
     c.bench_function("valid_with_null", |b| {
         b.iter(|| {
             validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::Null,
                 false,
-                vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
+                expected.clone(),
             );
         });
     });
@@ -167,7 +150,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 &file,
                 DefaultValueForInvalidUtf8::Default("invalid".to_string()),
                 false,
-                vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
+                expected.clone(),
             );
         });
     });
@@ -178,7 +161,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 &file,
                 DefaultValueForInvalidUtf8::None,
                 false,
-                vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
+                expected.clone(),
             );
         });
     });
@@ -189,7 +172,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 &file,
                 DefaultValueForInvalidUtf8::None,
                 true,
-                vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
+                expected.clone(),
             );
         });
     });

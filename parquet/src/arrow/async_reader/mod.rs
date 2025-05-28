@@ -2701,4 +2701,67 @@ mod tests {
         assert_eq!(arr.value(2), "datafusion-arrow🎷");
         assert_eq!(arr.value(3), "c");
     }
+
+    #[tokio::test]
+    async fn test_utf8_validation_with_default_null_n100() {
+        let mut file = tempfile::tempfile().unwrap();
+        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
+        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
+        let batch = RecordBatch::try_new(
+            schema,
+            vec![Arc::new(StringArray::from(vec![
+                Some("hello_datafusion✨"),
+                None,
+                Some("datafusion-arrow🎷"),
+                Some("c"),
+            ]))],
+        )
+        .unwrap();
+        writer.write(&batch).unwrap();
+        let _meta = writer.close().unwrap();
+
+        file.seek(SeekFrom::Start(0)).unwrap();
+
+        let mut buf = Vec::new();
+        let _ = file.read_to_end(&mut buf).unwrap();
+
+        buf[22] = 0xf0;
+        buf[23] = 0x28;
+
+        file.seek(SeekFrom::Start(0)).unwrap();
+        file.write_all(&buf).unwrap();
+
+        // open file with parquet data
+        let mut file = tokio::fs::File::from_std(file);
+
+        let skip_validation = UnsafeFlag::new();
+
+        let default_value = DefaultValueForInvalidUtf8::Null;
+
+        // load metadata once
+        let meta = ArrowReaderMetadata::load_async(
+            &mut file,
+            ArrowReaderOptions::new().with_column_value_decoder_options(
+                ColumnValueDecoderOptions::new(skip_validation, default_value),
+            ),
+        )
+        .await
+        .unwrap();
+        // create two readers, a and b, from the same underlying file
+        // without reading the metadata again
+        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
+            file.try_clone().await.unwrap(),
+            meta.clone(),
+        )
+        .build()
+        .unwrap();
+        let r = a.next().await.unwrap().unwrap();
+
+        let arr = r.column(0).as_string::<i32>();
+
+        assert!(arr.is_null(0));
+        assert!(arr.is_null(1));
+        assert_eq!(arr.value(2), "datafusion-arrow🎷");
+        assert_eq!(arr.value(3), "c");
+    }
 }
