@@ -200,9 +200,7 @@ pub struct CommandGetTables {
     ///     - "%" means to match any substring with 0 or more characters.
     ///     - "_" means to match any one character.
     #[prost(string, optional, tag = "3")]
-    pub table_name_filter_pattern: ::core::option::Option<
-        ::prost::alloc::string::String,
-    >,
+    pub table_name_filter_pattern: ::core::option::Option<::prost::alloc::string::String>,
     ///
     /// Specifies a filter of table types which must match.
     /// The table types depend on vendor/implementation. It is usually used to separate tables from views or system tables.
@@ -553,22 +551,15 @@ pub struct ActionEndTransactionRequest {
     #[prost(bytes = "bytes", tag = "1")]
     pub transaction_id: ::prost::bytes::Bytes,
     /// Whether to commit/rollback the given transaction.
-    #[prost(enumeration = "action_end_transaction_request::EndTransaction", tag = "2")]
+    #[prost(
+        enumeration = "action_end_transaction_request::EndTransaction",
+        tag = "2"
+    )]
     pub action: i32,
 }
 /// Nested message and enum types in `ActionEndTransactionRequest`.
 pub mod action_end_transaction_request {
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum EndTransaction {
         Unspecified = 0,
@@ -620,17 +611,7 @@ pub struct ActionEndSavepointRequest {
 }
 /// Nested message and enum types in `ActionEndSavepointRequest`.
 pub mod action_end_savepoint_request {
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum EndSavepoint {
         Unspecified = 0,
@@ -778,9 +759,8 @@ pub struct CommandPreparedStatementUpdate {
 pub struct CommandStatementIngest {
     /// The behavior for handling the table definition.
     #[prost(message, optional, tag = "1")]
-    pub table_definition_options: ::core::option::Option<
-        command_statement_ingest::TableDefinitionOptions,
-    >,
+    pub table_definition_options:
+        ::core::option::Option<command_statement_ingest::TableDefinitionOptions>,
     /// The table to load data into.
     #[prost(string, tag = "2")]
     pub table: ::prost::alloc::string::String,
@@ -802,10 +782,8 @@ pub struct CommandStatementIngest {
     pub transaction_id: ::core::option::Option<::prost::bytes::Bytes>,
     /// Backend-specific options.
     #[prost(map = "string, string", tag = "1000")]
-    pub options: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub options:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `CommandStatementIngest`.
 pub mod command_statement_ingest {
@@ -824,15 +802,7 @@ pub mod command_statement_ingest {
     pub mod table_definition_options {
         /// The action to take if the target table does not exist
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum TableNotExistOption {
@@ -867,15 +837,7 @@ pub mod command_statement_ingest {
         }
         /// The action to take if the target table already exists
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum TableExistsOption {
@@ -982,17 +944,7 @@ pub struct ActionCancelQueryResult {
 }
 /// Nested message and enum types in `ActionCancelQueryResult`.
 pub mod action_cancel_query_result {
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum CancelResult {
         /// The cancellation status is unknown. Servers should avoid using
@@ -1660,24 +1612,16 @@ impl SqlInfo {
             Self::FlightSqlServerReadOnly => "FLIGHT_SQL_SERVER_READ_ONLY",
             Self::FlightSqlServerSql => "FLIGHT_SQL_SERVER_SQL",
             Self::FlightSqlServerSubstrait => "FLIGHT_SQL_SERVER_SUBSTRAIT",
-            Self::FlightSqlServerSubstraitMinVersion => {
-                "FLIGHT_SQL_SERVER_SUBSTRAIT_MIN_VERSION"
-            }
-            Self::FlightSqlServerSubstraitMaxVersion => {
-                "FLIGHT_SQL_SERVER_SUBSTRAIT_MAX_VERSION"
-            }
+            Self::FlightSqlServerSubstraitMinVersion => "FLIGHT_SQL_SERVER_SUBSTRAIT_MIN_VERSION",
+            Self::FlightSqlServerSubstraitMaxVersion => "FLIGHT_SQL_SERVER_SUBSTRAIT_MAX_VERSION",
             Self::FlightSqlServerTransaction => "FLIGHT_SQL_SERVER_TRANSACTION",
             Self::FlightSqlServerCancel => "FLIGHT_SQL_SERVER_CANCEL",
             Self::FlightSqlServerBulkIngestion => "FLIGHT_SQL_SERVER_BULK_INGESTION",
             Self::FlightSqlServerIngestTransactionsSupported => {
                 "FLIGHT_SQL_SERVER_INGEST_TRANSACTIONS_SUPPORTED"
             }
-            Self::FlightSqlServerStatementTimeout => {
-                "FLIGHT_SQL_SERVER_STATEMENT_TIMEOUT"
-            }
-            Self::FlightSqlServerTransactionTimeout => {
-                "FLIGHT_SQL_SERVER_TRANSACTION_TIMEOUT"
-            }
+            Self::FlightSqlServerStatementTimeout => "FLIGHT_SQL_SERVER_STATEMENT_TIMEOUT",
+            Self::FlightSqlServerTransactionTimeout => "FLIGHT_SQL_SERVER_TRANSACTION_TIMEOUT",
             Self::SqlDdlCatalog => "SQL_DDL_CATALOG",
             Self::SqlDdlSchema => "SQL_DDL_SCHEMA",
             Self::SqlDdlTable => "SQL_DDL_TABLE",
@@ -1696,15 +1640,11 @@ impl SqlInfo {
             Self::SqlSupportsColumnAliasing => "SQL_SUPPORTS_COLUMN_ALIASING",
             Self::SqlNullPlusNullIsNull => "SQL_NULL_PLUS_NULL_IS_NULL",
             Self::SqlSupportsConvert => "SQL_SUPPORTS_CONVERT",
-            Self::SqlSupportsTableCorrelationNames => {
-                "SQL_SUPPORTS_TABLE_CORRELATION_NAMES"
-            }
+            Self::SqlSupportsTableCorrelationNames => "SQL_SUPPORTS_TABLE_CORRELATION_NAMES",
             Self::SqlSupportsDifferentTableCorrelationNames => {
                 "SQL_SUPPORTS_DIFFERENT_TABLE_CORRELATION_NAMES"
             }
-            Self::SqlSupportsExpressionsInOrderBy => {
-                "SQL_SUPPORTS_EXPRESSIONS_IN_ORDER_BY"
-            }
+            Self::SqlSupportsExpressionsInOrderBy => "SQL_SUPPORTS_EXPRESSIONS_IN_ORDER_BY",
             Self::SqlSupportsOrderByUnrelated => "SQL_SUPPORTS_ORDER_BY_UNRELATED",
             Self::SqlSupportedGroupBy => "SQL_SUPPORTED_GROUP_BY",
             Self::SqlSupportsLikeEscapeClause => "SQL_SUPPORTS_LIKE_ESCAPE_CLAUSE",
@@ -1725,9 +1665,7 @@ impl SqlInfo {
             Self::SqlSelectForUpdateSupported => "SQL_SELECT_FOR_UPDATE_SUPPORTED",
             Self::SqlStoredProceduresSupported => "SQL_STORED_PROCEDURES_SUPPORTED",
             Self::SqlSupportedSubqueries => "SQL_SUPPORTED_SUBQUERIES",
-            Self::SqlCorrelatedSubqueriesSupported => {
-                "SQL_CORRELATED_SUBQUERIES_SUPPORTED"
-            }
+            Self::SqlCorrelatedSubqueriesSupported => "SQL_CORRELATED_SUBQUERIES_SUPPORTED",
             Self::SqlSupportedUnions => "SQL_SUPPORTED_UNIONS",
             Self::SqlMaxBinaryLiteralLength => "SQL_MAX_BINARY_LITERAL_LENGTH",
             Self::SqlMaxCharLiteralLength => "SQL_MAX_CHAR_LITERAL_LENGTH",
@@ -1800,15 +1738,11 @@ impl SqlInfo {
             }
             "FLIGHT_SQL_SERVER_TRANSACTION" => Some(Self::FlightSqlServerTransaction),
             "FLIGHT_SQL_SERVER_CANCEL" => Some(Self::FlightSqlServerCancel),
-            "FLIGHT_SQL_SERVER_BULK_INGESTION" => {
-                Some(Self::FlightSqlServerBulkIngestion)
-            }
+            "FLIGHT_SQL_SERVER_BULK_INGESTION" => Some(Self::FlightSqlServerBulkIngestion),
             "FLIGHT_SQL_SERVER_INGEST_TRANSACTIONS_SUPPORTED" => {
                 Some(Self::FlightSqlServerIngestTransactionsSupported)
             }
-            "FLIGHT_SQL_SERVER_STATEMENT_TIMEOUT" => {
-                Some(Self::FlightSqlServerStatementTimeout)
-            }
+            "FLIGHT_SQL_SERVER_STATEMENT_TIMEOUT" => Some(Self::FlightSqlServerStatementTimeout),
             "FLIGHT_SQL_SERVER_TRANSACTION_TIMEOUT" => {
                 Some(Self::FlightSqlServerTransactionTimeout)
             }
@@ -1830,21 +1764,15 @@ impl SqlInfo {
             "SQL_SUPPORTS_COLUMN_ALIASING" => Some(Self::SqlSupportsColumnAliasing),
             "SQL_NULL_PLUS_NULL_IS_NULL" => Some(Self::SqlNullPlusNullIsNull),
             "SQL_SUPPORTS_CONVERT" => Some(Self::SqlSupportsConvert),
-            "SQL_SUPPORTS_TABLE_CORRELATION_NAMES" => {
-                Some(Self::SqlSupportsTableCorrelationNames)
-            }
+            "SQL_SUPPORTS_TABLE_CORRELATION_NAMES" => Some(Self::SqlSupportsTableCorrelationNames),
             "SQL_SUPPORTS_DIFFERENT_TABLE_CORRELATION_NAMES" => {
                 Some(Self::SqlSupportsDifferentTableCorrelationNames)
             }
-            "SQL_SUPPORTS_EXPRESSIONS_IN_ORDER_BY" => {
-                Some(Self::SqlSupportsExpressionsInOrderBy)
-            }
+            "SQL_SUPPORTS_EXPRESSIONS_IN_ORDER_BY" => Some(Self::SqlSupportsExpressionsInOrderBy),
             "SQL_SUPPORTS_ORDER_BY_UNRELATED" => Some(Self::SqlSupportsOrderByUnrelated),
             "SQL_SUPPORTED_GROUP_BY" => Some(Self::SqlSupportedGroupBy),
             "SQL_SUPPORTS_LIKE_ESCAPE_CLAUSE" => Some(Self::SqlSupportsLikeEscapeClause),
-            "SQL_SUPPORTS_NON_NULLABLE_COLUMNS" => {
-                Some(Self::SqlSupportsNonNullableColumns)
-            }
+            "SQL_SUPPORTS_NON_NULLABLE_COLUMNS" => Some(Self::SqlSupportsNonNullableColumns),
             "SQL_SUPPORTED_GRAMMAR" => Some(Self::SqlSupportedGrammar),
             "SQL_ANSI92_SUPPORTED_LEVEL" => Some(Self::SqlAnsi92SupportedLevel),
             "SQL_SUPPORTS_INTEGRITY_ENHANCEMENT_FACILITY" => {
@@ -1857,15 +1785,11 @@ impl SqlInfo {
             "SQL_CATALOG_AT_START" => Some(Self::SqlCatalogAtStart),
             "SQL_SCHEMAS_SUPPORTED_ACTIONS" => Some(Self::SqlSchemasSupportedActions),
             "SQL_CATALOGS_SUPPORTED_ACTIONS" => Some(Self::SqlCatalogsSupportedActions),
-            "SQL_SUPPORTED_POSITIONED_COMMANDS" => {
-                Some(Self::SqlSupportedPositionedCommands)
-            }
+            "SQL_SUPPORTED_POSITIONED_COMMANDS" => Some(Self::SqlSupportedPositionedCommands),
             "SQL_SELECT_FOR_UPDATE_SUPPORTED" => Some(Self::SqlSelectForUpdateSupported),
             "SQL_STORED_PROCEDURES_SUPPORTED" => Some(Self::SqlStoredProceduresSupported),
             "SQL_SUPPORTED_SUBQUERIES" => Some(Self::SqlSupportedSubqueries),
-            "SQL_CORRELATED_SUBQUERIES_SUPPORTED" => {
-                Some(Self::SqlCorrelatedSubqueriesSupported)
-            }
+            "SQL_CORRELATED_SUBQUERIES_SUPPORTED" => Some(Self::SqlCorrelatedSubqueriesSupported),
             "SQL_SUPPORTED_UNIONS" => Some(Self::SqlSupportedUnions),
             "SQL_MAX_BINARY_LITERAL_LENGTH" => Some(Self::SqlMaxBinaryLiteralLength),
             "SQL_MAX_CHAR_LITERAL_LENGTH" => Some(Self::SqlMaxCharLiteralLength),
@@ -1888,9 +1812,7 @@ impl SqlInfo {
             "SQL_MAX_TABLE_NAME_LENGTH" => Some(Self::SqlMaxTableNameLength),
             "SQL_MAX_TABLES_IN_SELECT" => Some(Self::SqlMaxTablesInSelect),
             "SQL_MAX_USERNAME_LENGTH" => Some(Self::SqlMaxUsernameLength),
-            "SQL_DEFAULT_TRANSACTION_ISOLATION" => {
-                Some(Self::SqlDefaultTransactionIsolation)
-            }
+            "SQL_DEFAULT_TRANSACTION_ISOLATION" => Some(Self::SqlDefaultTransactionIsolation),
             "SQL_TRANSACTIONS_SUPPORTED" => Some(Self::SqlTransactionsSupported),
             "SQL_SUPPORTED_TRANSACTIONS_ISOLATION_LEVELS" => {
                 Some(Self::SqlSupportedTransactionsIsolationLevels)
@@ -1976,9 +1898,7 @@ impl SqlSupportedCaseSensitivity {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             Self::SqlCaseSensitivityUnknown => "SQL_CASE_SENSITIVITY_UNKNOWN",
-            Self::SqlCaseSensitivityCaseInsensitive => {
-                "SQL_CASE_SENSITIVITY_CASE_INSENSITIVE"
-            }
+            Self::SqlCaseSensitivityCaseInsensitive => "SQL_CASE_SENSITIVITY_CASE_INSENSITIVE",
             Self::SqlCaseSensitivityUppercase => "SQL_CASE_SENSITIVITY_UPPERCASE",
             Self::SqlCaseSensitivityLowercase => "SQL_CASE_SENSITIVITY_LOWERCASE",
         }
@@ -2157,21 +2077,15 @@ impl SqlSupportedElementActions {
         match self {
             Self::SqlElementInProcedureCalls => "SQL_ELEMENT_IN_PROCEDURE_CALLS",
             Self::SqlElementInIndexDefinitions => "SQL_ELEMENT_IN_INDEX_DEFINITIONS",
-            Self::SqlElementInPrivilegeDefinitions => {
-                "SQL_ELEMENT_IN_PRIVILEGE_DEFINITIONS"
-            }
+            Self::SqlElementInPrivilegeDefinitions => "SQL_ELEMENT_IN_PRIVILEGE_DEFINITIONS",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "SQL_ELEMENT_IN_PROCEDURE_CALLS" => Some(Self::SqlElementInProcedureCalls),
-            "SQL_ELEMENT_IN_INDEX_DEFINITIONS" => {
-                Some(Self::SqlElementInIndexDefinitions)
-            }
-            "SQL_ELEMENT_IN_PRIVILEGE_DEFINITIONS" => {
-                Some(Self::SqlElementInPrivilegeDefinitions)
-            }
+            "SQL_ELEMENT_IN_INDEX_DEFINITIONS" => Some(Self::SqlElementInIndexDefinitions),
+            "SQL_ELEMENT_IN_PRIVILEGE_DEFINITIONS" => Some(Self::SqlElementInPrivilegeDefinitions),
             _ => None,
         }
     }
@@ -2287,9 +2201,7 @@ impl SqlTransactionIsolationLevel {
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "SQL_TRANSACTION_NONE" => Some(Self::SqlTransactionNone),
-            "SQL_TRANSACTION_READ_UNCOMMITTED" => {
-                Some(Self::SqlTransactionReadUncommitted)
-            }
+            "SQL_TRANSACTION_READ_UNCOMMITTED" => Some(Self::SqlTransactionReadUncommitted),
             "SQL_TRANSACTION_READ_COMMITTED" => Some(Self::SqlTransactionReadCommitted),
             "SQL_TRANSACTION_REPEATABLE_READ" => Some(Self::SqlTransactionRepeatableRead),
             "SQL_TRANSACTION_SERIALIZABLE" => Some(Self::SqlTransactionSerializable),
@@ -2320,12 +2232,8 @@ impl SqlSupportedTransactions {
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "SQL_TRANSACTION_UNSPECIFIED" => Some(Self::SqlTransactionUnspecified),
-            "SQL_DATA_DEFINITION_TRANSACTIONS" => {
-                Some(Self::SqlDataDefinitionTransactions)
-            }
-            "SQL_DATA_MANIPULATION_TRANSACTIONS" => {
-                Some(Self::SqlDataManipulationTransactions)
-            }
+            "SQL_DATA_DEFINITION_TRANSACTIONS" => Some(Self::SqlDataDefinitionTransactions),
+            "SQL_DATA_MANIPULATION_TRANSACTIONS" => Some(Self::SqlDataManipulationTransactions),
             _ => None,
         }
     }
@@ -2347,12 +2255,8 @@ impl SqlSupportedResultSetType {
         match self {
             Self::SqlResultSetTypeUnspecified => "SQL_RESULT_SET_TYPE_UNSPECIFIED",
             Self::SqlResultSetTypeForwardOnly => "SQL_RESULT_SET_TYPE_FORWARD_ONLY",
-            Self::SqlResultSetTypeScrollInsensitive => {
-                "SQL_RESULT_SET_TYPE_SCROLL_INSENSITIVE"
-            }
-            Self::SqlResultSetTypeScrollSensitive => {
-                "SQL_RESULT_SET_TYPE_SCROLL_SENSITIVE"
-            }
+            Self::SqlResultSetTypeScrollInsensitive => "SQL_RESULT_SET_TYPE_SCROLL_INSENSITIVE",
+            Self::SqlResultSetTypeScrollSensitive => "SQL_RESULT_SET_TYPE_SCROLL_SENSITIVE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2363,9 +2267,7 @@ impl SqlSupportedResultSetType {
             "SQL_RESULT_SET_TYPE_SCROLL_INSENSITIVE" => {
                 Some(Self::SqlResultSetTypeScrollInsensitive)
             }
-            "SQL_RESULT_SET_TYPE_SCROLL_SENSITIVE" => {
-                Some(Self::SqlResultSetTypeScrollSensitive)
-            }
+            "SQL_RESULT_SET_TYPE_SCROLL_SENSITIVE" => Some(Self::SqlResultSetTypeScrollSensitive),
             _ => None,
         }
     }
@@ -2384,15 +2286,9 @@ impl SqlSupportedResultSetConcurrency {
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::SqlResultSetConcurrencyUnspecified => {
-                "SQL_RESULT_SET_CONCURRENCY_UNSPECIFIED"
-            }
-            Self::SqlResultSetConcurrencyReadOnly => {
-                "SQL_RESULT_SET_CONCURRENCY_READ_ONLY"
-            }
-            Self::SqlResultSetConcurrencyUpdatable => {
-                "SQL_RESULT_SET_CONCURRENCY_UPDATABLE"
-            }
+            Self::SqlResultSetConcurrencyUnspecified => "SQL_RESULT_SET_CONCURRENCY_UNSPECIFIED",
+            Self::SqlResultSetConcurrencyReadOnly => "SQL_RESULT_SET_CONCURRENCY_READ_ONLY",
+            Self::SqlResultSetConcurrencyUpdatable => "SQL_RESULT_SET_CONCURRENCY_UPDATABLE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2401,12 +2297,8 @@ impl SqlSupportedResultSetConcurrency {
             "SQL_RESULT_SET_CONCURRENCY_UNSPECIFIED" => {
                 Some(Self::SqlResultSetConcurrencyUnspecified)
             }
-            "SQL_RESULT_SET_CONCURRENCY_READ_ONLY" => {
-                Some(Self::SqlResultSetConcurrencyReadOnly)
-            }
-            "SQL_RESULT_SET_CONCURRENCY_UPDATABLE" => {
-                Some(Self::SqlResultSetConcurrencyUpdatable)
-            }
+            "SQL_RESULT_SET_CONCURRENCY_READ_ONLY" => Some(Self::SqlResultSetConcurrencyReadOnly),
+            "SQL_RESULT_SET_CONCURRENCY_UPDATABLE" => Some(Self::SqlResultSetConcurrencyUpdatable),
             _ => None,
         }
     }
@@ -2631,9 +2523,7 @@ impl XdbcDatetimeSubcode {
             Self::XdbcSubcodeTime => "XDBC_SUBCODE_TIME",
             Self::XdbcSubcodeTimestamp => "XDBC_SUBCODE_TIMESTAMP",
             Self::XdbcSubcodeTimeWithTimezone => "XDBC_SUBCODE_TIME_WITH_TIMEZONE",
-            Self::XdbcSubcodeTimestampWithTimezone => {
-                "XDBC_SUBCODE_TIMESTAMP_WITH_TIMEZONE"
-            }
+            Self::XdbcSubcodeTimestampWithTimezone => "XDBC_SUBCODE_TIMESTAMP_WITH_TIMEZONE",
             Self::XdbcSubcodeSecond => "XDBC_SUBCODE_SECOND",
             Self::XdbcSubcodeYearToMonth => "XDBC_SUBCODE_YEAR_TO_MONTH",
             Self::XdbcSubcodeDayToHour => "XDBC_SUBCODE_DAY_TO_HOUR",
@@ -2652,15 +2542,9 @@ impl XdbcDatetimeSubcode {
             Self::XdbcSubcodeIntervalDayToHour => "XDBC_SUBCODE_INTERVAL_DAY_TO_HOUR",
             Self::XdbcSubcodeIntervalDayToMinute => "XDBC_SUBCODE_INTERVAL_DAY_TO_MINUTE",
             Self::XdbcSubcodeIntervalDayToSecond => "XDBC_SUBCODE_INTERVAL_DAY_TO_SECOND",
-            Self::XdbcSubcodeIntervalHourToMinute => {
-                "XDBC_SUBCODE_INTERVAL_HOUR_TO_MINUTE"
-            }
-            Self::XdbcSubcodeIntervalHourToSecond => {
-                "XDBC_SUBCODE_INTERVAL_HOUR_TO_SECOND"
-            }
-            Self::XdbcSubcodeIntervalMinuteToSecond => {
-                "XDBC_SUBCODE_INTERVAL_MINUTE_TO_SECOND"
-            }
+            Self::XdbcSubcodeIntervalHourToMinute => "XDBC_SUBCODE_INTERVAL_HOUR_TO_MINUTE",
+            Self::XdbcSubcodeIntervalHourToSecond => "XDBC_SUBCODE_INTERVAL_HOUR_TO_SECOND",
+            Self::XdbcSubcodeIntervalMinuteToSecond => "XDBC_SUBCODE_INTERVAL_MINUTE_TO_SECOND",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -2671,9 +2555,7 @@ impl XdbcDatetimeSubcode {
             "XDBC_SUBCODE_TIME" => Some(Self::XdbcSubcodeTime),
             "XDBC_SUBCODE_TIMESTAMP" => Some(Self::XdbcSubcodeTimestamp),
             "XDBC_SUBCODE_TIME_WITH_TIMEZONE" => Some(Self::XdbcSubcodeTimeWithTimezone),
-            "XDBC_SUBCODE_TIMESTAMP_WITH_TIMEZONE" => {
-                Some(Self::XdbcSubcodeTimestampWithTimezone)
-            }
+            "XDBC_SUBCODE_TIMESTAMP_WITH_TIMEZONE" => Some(Self::XdbcSubcodeTimestampWithTimezone),
             "XDBC_SUBCODE_SECOND" => Some(Self::XdbcSubcodeSecond),
             "XDBC_SUBCODE_YEAR_TO_MONTH" => Some(Self::XdbcSubcodeYearToMonth),
             "XDBC_SUBCODE_DAY_TO_HOUR" => Some(Self::XdbcSubcodeDayToHour),
@@ -2688,24 +2570,12 @@ impl XdbcDatetimeSubcode {
             "XDBC_SUBCODE_INTERVAL_HOUR" => Some(Self::XdbcSubcodeIntervalHour),
             "XDBC_SUBCODE_INTERVAL_MINUTE" => Some(Self::XdbcSubcodeIntervalMinute),
             "XDBC_SUBCODE_INTERVAL_SECOND" => Some(Self::XdbcSubcodeIntervalSecond),
-            "XDBC_SUBCODE_INTERVAL_YEAR_TO_MONTH" => {
-                Some(Self::XdbcSubcodeIntervalYearToMonth)
-            }
-            "XDBC_SUBCODE_INTERVAL_DAY_TO_HOUR" => {
-                Some(Self::XdbcSubcodeIntervalDayToHour)
-            }
-            "XDBC_SUBCODE_INTERVAL_DAY_TO_MINUTE" => {
-                Some(Self::XdbcSubcodeIntervalDayToMinute)
-            }
-            "XDBC_SUBCODE_INTERVAL_DAY_TO_SECOND" => {
-                Some(Self::XdbcSubcodeIntervalDayToSecond)
-            }
-            "XDBC_SUBCODE_INTERVAL_HOUR_TO_MINUTE" => {
-                Some(Self::XdbcSubcodeIntervalHourToMinute)
-            }
-            "XDBC_SUBCODE_INTERVAL_HOUR_TO_SECOND" => {
-                Some(Self::XdbcSubcodeIntervalHourToSecond)
-            }
+            "XDBC_SUBCODE_INTERVAL_YEAR_TO_MONTH" => Some(Self::XdbcSubcodeIntervalYearToMonth),
+            "XDBC_SUBCODE_INTERVAL_DAY_TO_HOUR" => Some(Self::XdbcSubcodeIntervalDayToHour),
+            "XDBC_SUBCODE_INTERVAL_DAY_TO_MINUTE" => Some(Self::XdbcSubcodeIntervalDayToMinute),
+            "XDBC_SUBCODE_INTERVAL_DAY_TO_SECOND" => Some(Self::XdbcSubcodeIntervalDayToSecond),
+            "XDBC_SUBCODE_INTERVAL_HOUR_TO_MINUTE" => Some(Self::XdbcSubcodeIntervalHourToMinute),
+            "XDBC_SUBCODE_INTERVAL_HOUR_TO_SECOND" => Some(Self::XdbcSubcodeIntervalHourToSecond),
             "XDBC_SUBCODE_INTERVAL_MINUTE_TO_SECOND" => {
                 Some(Self::XdbcSubcodeIntervalMinuteToSecond)
             }

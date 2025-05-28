@@ -130,17 +130,7 @@ pub struct FlightDescriptor {
 pub mod flight_descriptor {
     ///
     /// Describes what type of descriptor is defined.
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum DescriptorType {
         /// Protobuf pattern, not used.
@@ -422,10 +412,10 @@ pub mod flight_service_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     ///
     /// A flight service is an endpoint for retrieving or storing Arrow data. A
     /// flight service can expose one or more predefined endpoints that can be
@@ -474,9 +464,8 @@ pub mod flight_service_client {
                     <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
                 >,
             >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             FlightServiceClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -523,23 +512,18 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::HandshakeResponse>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/Handshake",
             );
             let mut req = request.into_streaming_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("arrow.flight.protocol.FlightService", "Handshake"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "Handshake",
+            ));
             self.inner.streaming(req, path, codec).await
         }
         ///
@@ -556,23 +540,18 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::FlightInfo>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/ListFlights",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("arrow.flight.protocol.FlightService", "ListFlights"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "ListFlights",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
         ///
@@ -590,26 +569,18 @@ pub mod flight_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::FlightDescriptor>,
         ) -> std::result::Result<tonic::Response<super::FlightInfo>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/GetFlightInfo",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "arrow.flight.protocol.FlightService",
-                        "GetFlightInfo",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "GetFlightInfo",
+            ));
             self.inner.unary(req, path, codec).await
         }
         ///
@@ -639,26 +610,18 @@ pub mod flight_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::FlightDescriptor>,
         ) -> std::result::Result<tonic::Response<super::PollInfo>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/PollFlightInfo",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "arrow.flight.protocol.FlightService",
-                        "PollFlightInfo",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "PollFlightInfo",
+            ));
             self.inner.unary(req, path, codec).await
         }
         ///
@@ -670,23 +633,18 @@ pub mod flight_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::FlightDescriptor>,
         ) -> std::result::Result<tonic::Response<super::SchemaResult>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/GetSchema",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("arrow.flight.protocol.FlightService", "GetSchema"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "GetSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         ///
@@ -701,21 +659,17 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::FlightData>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/arrow.flight.protocol.FlightService/DoGet",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/arrow.flight.protocol.FlightService/DoGet");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("arrow.flight.protocol.FlightService", "DoGet"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "DoGet",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
         ///
@@ -732,21 +686,17 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::PutResult>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/arrow.flight.protocol.FlightService/DoPut",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/arrow.flight.protocol.FlightService/DoPut");
             let mut req = request.into_streaming_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("arrow.flight.protocol.FlightService", "DoPut"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "DoPut",
+            ));
             self.inner.streaming(req, path, codec).await
         }
         ///
@@ -762,23 +712,18 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::FlightData>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/DoExchange",
             );
             let mut req = request.into_streaming_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("arrow.flight.protocol.FlightService", "DoExchange"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "DoExchange",
+            ));
             self.inner.streaming(req, path, codec).await
         }
         ///
@@ -795,23 +740,18 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::Result>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/DoAction",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("arrow.flight.protocol.FlightService", "DoAction"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "DoAction",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
         ///
@@ -825,23 +765,18 @@ pub mod flight_service_client {
             tonic::Response<tonic::codec::Streaming<super::ActionType>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/arrow.flight.protocol.FlightService/ListActions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("arrow.flight.protocol.FlightService", "ListActions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "arrow.flight.protocol.FlightService",
+                "ListActions",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
     }
@@ -853,7 +788,7 @@ pub mod flight_service_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with FlightServiceServer.
@@ -862,8 +797,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the Handshake method.
         type HandshakeStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::HandshakeResponse, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// Handshake between client and server. Depending on the server, the
@@ -877,8 +811,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the ListFlights method.
         type ListFlightsStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::FlightInfo, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// Get a list of available streams given a particular criteria. Most flight
@@ -890,10 +823,7 @@ pub mod flight_service_server {
         async fn list_flights(
             &self,
             request: tonic::Request<super::Criteria>,
-        ) -> std::result::Result<
-            tonic::Response<Self::ListFlightsStream>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<Self::ListFlightsStream>, tonic::Status>;
         ///
         /// For a given FlightDescriptor, get information about how the flight can be
         /// consumed. This is a useful interface if the consumer of the interface
@@ -948,8 +878,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the DoGet method.
         type DoGetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::FlightData, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// Retrieve a single stream associated with a particular descriptor
@@ -963,8 +892,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the DoPut method.
         type DoPutStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::PutResult, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// Push a stream to the flight service associated with a particular
@@ -980,8 +908,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the DoExchange method.
         type DoExchangeStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::FlightData, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// Open a bidirectional data channel for a given descriptor. This
@@ -996,8 +923,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the DoAction method.
         type DoActionStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::Result, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// Flight services can support an arbitrary number of simple actions in
@@ -1013,8 +939,7 @@ pub mod flight_service_server {
         /// Server streaming response type for the ListActions method.
         type ListActionsStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::ActionType, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         ///
         /// A flight service exposes all of the available action types that it has
@@ -1023,10 +948,7 @@ pub mod flight_service_server {
         async fn list_actions(
             &self,
             request: tonic::Request<super::Empty>,
-        ) -> std::result::Result<
-            tonic::Response<Self::ListActionsStream>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<Self::ListActionsStream>, tonic::Status>;
     }
     ///
     /// A flight service is an endpoint for retrieving or storing Arrow data. A
@@ -1054,10 +976,7 @@ pub mod flight_service_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -1112,21 +1031,16 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/Handshake" => {
                     #[allow(non_camel_case_types)]
                     struct HandshakeSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::StreamingService<super::HandshakeRequest>
-                    for HandshakeSvc<T> {
+                    impl<T: FlightService> tonic::server::StreamingService<super::HandshakeRequest>
+                        for HandshakeSvc<T>
+                    {
                         type Response = super::HandshakeResponse;
                         type ResponseStream = T::HandshakeStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<super::HandshakeRequest>,
-                            >,
+                            request: tonic::Request<tonic::Streaming<super::HandshakeRequest>>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1160,16 +1074,13 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/ListFlights" => {
                     #[allow(non_camel_case_types)]
                     struct ListFlightsSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::ServerStreamingService<super::Criteria>
-                    for ListFlightsSvc<T> {
+                    impl<T: FlightService> tonic::server::ServerStreamingService<super::Criteria>
+                        for ListFlightsSvc<T>
+                    {
                         type Response = super::FlightInfo;
                         type ResponseStream = T::ListFlightsStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::Criteria>,
@@ -1206,15 +1117,11 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/GetFlightInfo" => {
                     #[allow(non_camel_case_types)]
                     struct GetFlightInfoSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::UnaryService<super::FlightDescriptor>
-                    for GetFlightInfoSvc<T> {
+                    impl<T: FlightService> tonic::server::UnaryService<super::FlightDescriptor>
+                        for GetFlightInfoSvc<T>
+                    {
                         type Response = super::FlightInfo;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::FlightDescriptor>,
@@ -1251,23 +1158,18 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/PollFlightInfo" => {
                     #[allow(non_camel_case_types)]
                     struct PollFlightInfoSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::UnaryService<super::FlightDescriptor>
-                    for PollFlightInfoSvc<T> {
+                    impl<T: FlightService> tonic::server::UnaryService<super::FlightDescriptor>
+                        for PollFlightInfoSvc<T>
+                    {
                         type Response = super::PollInfo;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::FlightDescriptor>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FlightService>::poll_flight_info(&inner, request)
-                                    .await
+                                <T as FlightService>::poll_flight_info(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1297,15 +1199,9 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/GetSchema" => {
                     #[allow(non_camel_case_types)]
                     struct GetSchemaSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::UnaryService<super::FlightDescriptor>
-                    for GetSchemaSvc<T> {
+                    impl<T: FlightService> tonic::server::UnaryService<super::FlightDescriptor> for GetSchemaSvc<T> {
                         type Response = super::SchemaResult;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::FlightDescriptor>,
@@ -1342,24 +1238,15 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/DoGet" => {
                     #[allow(non_camel_case_types)]
                     struct DoGetSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::ServerStreamingService<super::Ticket>
-                    for DoGetSvc<T> {
+                    impl<T: FlightService> tonic::server::ServerStreamingService<super::Ticket> for DoGetSvc<T> {
                         type Response = super::FlightData;
                         type ResponseStream = T::DoGetStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::Ticket>,
-                        ) -> Self::Future {
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(&mut self, request: tonic::Request<super::Ticket>) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as FlightService>::do_get(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as FlightService>::do_get(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1388,24 +1275,18 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/DoPut" => {
                     #[allow(non_camel_case_types)]
                     struct DoPutSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::StreamingService<super::FlightData>
-                    for DoPutSvc<T> {
+                    impl<T: FlightService> tonic::server::StreamingService<super::FlightData> for DoPutSvc<T> {
                         type Response = super::PutResult;
                         type ResponseStream = T::DoPutStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<tonic::Streaming<super::FlightData>>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as FlightService>::do_put(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as FlightService>::do_put(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1434,16 +1315,11 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/DoExchange" => {
                     #[allow(non_camel_case_types)]
                     struct DoExchangeSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::StreamingService<super::FlightData>
-                    for DoExchangeSvc<T> {
+                    impl<T: FlightService> tonic::server::StreamingService<super::FlightData> for DoExchangeSvc<T> {
                         type Response = super::FlightData;
                         type ResponseStream = T::DoExchangeStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<tonic::Streaming<super::FlightData>>,
@@ -1480,20 +1356,12 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/DoAction" => {
                     #[allow(non_camel_case_types)]
                     struct DoActionSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::ServerStreamingService<super::Action>
-                    for DoActionSvc<T> {
+                    impl<T: FlightService> tonic::server::ServerStreamingService<super::Action> for DoActionSvc<T> {
                         type Response = super::Result;
                         type ResponseStream = T::DoActionStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::Action>,
-                        ) -> Self::Future {
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(&mut self, request: tonic::Request<super::Action>) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as FlightService>::do_action(&inner, request).await
@@ -1526,20 +1394,12 @@ pub mod flight_service_server {
                 "/arrow.flight.protocol.FlightService/ListActions" => {
                     #[allow(non_camel_case_types)]
                     struct ListActionsSvc<T: FlightService>(pub Arc<T>);
-                    impl<
-                        T: FlightService,
-                    > tonic::server::ServerStreamingService<super::Empty>
-                    for ListActionsSvc<T> {
+                    impl<T: FlightService> tonic::server::ServerStreamingService<super::Empty> for ListActionsSvc<T> {
                         type Response = super::ActionType;
                         type ResponseStream = T::ListActionsStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::Empty>,
-                        ) -> Self::Future {
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(&mut self, request: tonic::Request<super::Empty>) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as FlightService>::list_actions(&inner, request).await
@@ -1569,23 +1429,19 @@ pub mod flight_service_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(empty_body());
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(empty_body());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
