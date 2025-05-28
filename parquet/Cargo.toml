@@ -231,5 +231,10 @@ name = "row_selector"
 harness = false
 required-features = ["arrow"]
 
+[[bench]]
+name = "non_valid_utf8_read"
+harness = false
+required-features = ["arrow"]
+
 [lib]
 bench = false

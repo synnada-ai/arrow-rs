@@ -286,6 +286,16 @@ impl<T> ArrowReaderBuilder<T> {
             ..self
         }
     }
+
+    pub fn with_column_value_decoder_options(
+        self,
+        column_value_decoder_options: ColumnValueDecoderOptions,
+    ) -> Self {
+        Self {
+            column_value_decoder_options,
+            ..self
+        }
+    }
 }
 
 /// Options that control how metadata is read for a parquet file
@@ -295,7 +305,7 @@ impl<T> ArrowReaderBuilder<T> {
 #[derive(Debug, Clone, Default)]
 pub struct ArrowReaderOptions {
     /// The options used to decode column values
-    column_value_decoder_options: ColumnValueDecoderOptions,
+    pub column_value_decoder_options: ColumnValueDecoderOptions,
 
     /// Should the reader strip any user defined metadata from the Arrow schema
     skip_arrow_metadata: bool,
@@ -4623,7 +4633,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_skip_utf8_validation() {
+    async fn test_skip_utf8_validation_v1() {
         let schema = Arc::new(Schema::new(vec![Field::new(
             "item",
             arrow_schema::DataType::Binary,
@@ -4673,8 +4683,8 @@ mod tests {
             let mut builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
                 file.try_clone().unwrap(),
                 metadata,
-            );
-            builder.column_value_decoder_options = opts.column_value_decoder_options;
+            )
+            .with_column_value_decoder_options(opts.column_value_decoder_options);
             let mut reader = builder.build().unwrap();
             let batch = reader.next().unwrap().unwrap();
 
@@ -4684,6 +4694,91 @@ mod tests {
                 .downcast_ref::<StringArray>()
                 .unwrap();
             assert_eq!(arr.len(), 3);
+
+            for (i, expected_val) in expected.iter().enumerate() {
+                match expected_val {
+                    Some(expected_str) => assert_eq!(arr.value(i), *expected_str),
+                    None => assert!(arr.is_null(i), "Expected null at index {}", i),
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_skip_utf8_validation_v2() {
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "item",
+            arrow_schema::DataType::Binary,
+            true,
+        )]));
+        let n = 100;
+        let mut raw = vec![Some(b"ok".to_vec()); n];
+        raw[1] = Some(vec![0xff, 0xfe]); // Invalid UTF-8
+        let binary_array = Arc::new(BinaryArray::from(
+            raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
+        ));
+        let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
+        let mut file = tempfile().unwrap();
+        let mut writer = ArrowWriter::try_new(&mut file, schema, None).unwrap();
+        writer.write(&batch).unwrap();
+        writer.close().unwrap();
+
+        let mut expected_1 = raw
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                if i == 1 {
+                    Some("__invalid__")
+                } else {
+                    Some("ok")
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let mut expected_2 = raw
+            .iter()
+            .enumerate()
+            .map(|(i, _)| if i == 1 { None } else { Some("ok") })
+            .collect::<Vec<_>>();
+
+        let test_cases = vec![
+            (
+                DefaultValueForInvalidUtf8::Default("__invalid__".to_string()),
+                expected_1,
+            ),
+            (DefaultValueForInvalidUtf8::Null, expected_2),
+        ];
+
+        for (default_value, expected) in test_cases {
+            let projected_schema = Arc::new(Schema::new(vec![Field::new(
+                "item",
+                arrow_schema::DataType::Utf8,
+                true,
+            )]));
+
+            let flag = UnsafeFlag::new();
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema.clone())
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    flag.clone(),
+                    default_value.clone(),
+                ));
+
+            let metadata = ArrowReaderMetadata::load(&file, opts.clone()).unwrap();
+            let mut builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
+                file.try_clone().unwrap(),
+                metadata,
+            )
+            .with_column_value_decoder_options(opts.column_value_decoder_options);
+            let mut reader = builder.build().unwrap();
+            let batch = reader.next().unwrap().unwrap();
+
+            let arr = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+            assert_eq!(arr.len(), n);
 
             for (i, expected_val) in expected.iter().enumerate() {
                 match expected_val {

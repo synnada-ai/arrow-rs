@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::collections::HashMap;
+
 use crate::arrow::buffer::bit_util::iter_set_bits_rev;
 use crate::arrow::decoder::DefaultValueForInvalidUtf8;
 use crate::arrow::record_reader::buffer::ValuesBuffer;
@@ -175,18 +177,34 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
     ) -> Result<Vec<bool>> {
         let mut non_null_mask_partial = Vec::with_capacity(keys.len());
         let mut skipped = 0;
+        let mut offset_indexes = HashMap::with_capacity(keys.len());
+
         for key in keys.iter() {
             let index = key.as_usize();
-            let offset_index = index - skipped;
 
-            debug_assert!(index < non_null_mask.len());
-            if !non_null_mask[index] {
-                non_null_mask_partial.push(false);
-                skipped += 1;
-                continue;
-            }
-
-            non_null_mask_partial.push(true);
+            let offset_index = if let Some(offset_index) = offset_indexes.get(&index) {
+                if !non_null_mask[index] {
+                    non_null_mask_partial.push(false);
+                    continue;
+                } else {
+                    non_null_mask_partial.push(true);
+                    *offset_index
+                }
+            } else {
+                debug_assert!(index < non_null_mask.len());
+                if !non_null_mask[index] {
+                    non_null_mask_partial.push(false);
+                    skipped += 1;
+                    offset_indexes.insert(index, usize::MAX);
+                    continue;
+                } else {
+                    debug_assert!(index >= skipped);
+                    let offset_index = index - skipped;
+                    offset_indexes.insert(index, offset_index);
+                    non_null_mask_partial.push(true);
+                    offset_index
+                }
+            };
 
             if offset_index + 1 >= dict_offsets.len() {
                 return Err(general_err!(
