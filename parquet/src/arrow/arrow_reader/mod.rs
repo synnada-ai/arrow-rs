@@ -287,6 +287,7 @@ impl<T> ArrowReaderBuilder<T> {
         }
     }
 
+    /// Provide column value decoder options to use when decoding column values
     pub fn with_column_value_decoder_options(
         self,
         column_value_decoder_options: ColumnValueDecoderOptions,

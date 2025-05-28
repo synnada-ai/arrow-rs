@@ -54,7 +54,8 @@ pub fn make_byte_view_array_reader(
 
     match data_type {
         ArrowType::BinaryView | ArrowType::Utf8View => {
-            let reader = GenericRecordReader::new_with_options(options, column_desc, data_type.clone());
+            let reader =
+                GenericRecordReader::new_with_options(options, column_desc, data_type.clone());
             Ok(Box::new(ByteViewArrayReader::new(pages, data_type, reader)))
         }
 
@@ -147,9 +148,13 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         }
     }
 
-    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr, data_type: ArrowType) -> Self {
-        let validate_utf8 =
-            !options.skip_validation.get() && (col.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8);
+    fn new_with_options(
+        options: ColumnValueDecoderOptions,
+        col: &ColumnDescPtr,
+        data_type: ArrowType,
+    ) -> Self {
+        let validate_utf8 = !options.skip_validation.get()
+            && (col.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8);
         Self {
             dict: None,
             decoder: None,
@@ -212,7 +217,11 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         decoder.read(out, num_values, self.dict.as_ref())
     }
 
-    fn read_with_null_mask(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<Vec<bool>> {
+    fn read_with_null_mask(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_values: usize,
+    ) -> Result<Vec<bool>> {
         let len = self.read(out, num_values)?;
         Ok(vec![true; len])
     }

@@ -248,10 +248,14 @@ where
         }
     }
 
-    fn new_with_options(options: ColumnValueDecoderOptions, col: &ColumnDescPtr, data_type: ArrowType) -> Self {
-        let is_utf8_type = col.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8;
-        let validate_utf8 =
-            !options.skip_validation.get() && is_utf8_type;
+    fn new_with_options(
+        options: ColumnValueDecoderOptions,
+        col: &ColumnDescPtr,
+        data_type: ArrowType,
+    ) -> Self {
+        let is_utf8_type =
+            col.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8;
+        let validate_utf8 = !options.skip_validation.get() && is_utf8_type;
 
         let value_type = match (V::IS_LARGE, is_utf8_type) {
             (true, true) => ArrowType::LargeUtf8,
@@ -293,8 +297,14 @@ where
 
         let len = num_values as usize;
         let mut buffer = OffsetBuffer::<V>::default();
-        let mut decoder = ByteArrayDecoderPlain::new(buf, len, Some(len), self.validate_utf8, self.default_value.clone());
-        
+        let mut decoder = ByteArrayDecoderPlain::new(
+            buf,
+            len,
+            Some(len),
+            self.validate_utf8,
+            self.default_value.clone(),
+        );
+
         decoder.read(&mut buffer, usize::MAX)?;
 
         let array = buffer.into_array(None, self.value_type.clone());
@@ -325,7 +335,7 @@ where
                 num_levels,
                 num_values,
                 self.validate_utf8,
-                self.default_value.clone()
+                self.default_value.clone(),
             )?),
         };
 
@@ -394,7 +404,11 @@ where
         }
     }
 
-    fn read_with_null_mask(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<Vec<bool>> {
+    fn read_with_null_mask(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_values: usize,
+    ) -> Result<Vec<bool>> {
         match self.decoder.as_mut().expect("decoder set") {
             MaybeDictionaryDecoder::Fallback(decoder) => {
                 decoder.read(out.spill_values()?, num_values, None, None)

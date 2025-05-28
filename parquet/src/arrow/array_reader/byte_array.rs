@@ -58,7 +58,8 @@ pub fn make_byte_array_reader(
         | ArrowType::Utf8
         | ArrowType::Decimal128(_, _)
         | ArrowType::Decimal256(_, _) => {
-            let reader = GenericRecordReader::new_with_options(options, column_desc, data_type.clone());
+            let reader =
+                GenericRecordReader::new_with_options(options, column_desc, data_type.clone());
             Ok(Box::new(ByteArrayReader::<i32>::new(
                 pages, data_type, reader,
             )))
@@ -191,9 +192,13 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         }
     }
 
-    fn new_with_options(options: ColumnValueDecoderOptions, desc: &ColumnDescPtr, data_type: ArrowType) -> Self {
-        let validate_utf8 =
-            !options.skip_validation.get() && (desc.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8);
+    fn new_with_options(
+        options: ColumnValueDecoderOptions,
+        desc: &ColumnDescPtr,
+        data_type: ArrowType,
+    ) -> Self {
+        let validate_utf8 = !options.skip_validation.get()
+            && (desc.converted_type() == ConvertedType::UTF8 || data_type == ArrowType::Utf8);
 
         Self {
             dict: None,
@@ -260,17 +265,31 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
             .as_mut()
             .ok_or_else(|| general_err!("no decoder set"))?;
 
-        let non_null_mask = decoder.read(out, num_values, self.dict.as_ref(), self.non_null_mask.as_ref())?;
+        let non_null_mask = decoder.read(
+            out,
+            num_values,
+            self.dict.as_ref(),
+            self.non_null_mask.as_ref(),
+        )?;
         Ok(non_null_mask.len())
     }
 
-    fn read_with_null_mask(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<Vec<bool>> {
+    fn read_with_null_mask(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_values: usize,
+    ) -> Result<Vec<bool>> {
         let decoder = self
-        .decoder
-        .as_mut()
-        .ok_or_else(|| general_err!("no decoder set"))?;
+            .decoder
+            .as_mut()
+            .ok_or_else(|| general_err!("no decoder set"))?;
 
-        decoder.read(out, num_values, self.dict.as_ref(), self.non_null_mask.as_ref())
+        decoder.read(
+            out,
+            num_values,
+            self.dict.as_ref(),
+            self.non_null_mask.as_ref(),
+        )
     }
 
     fn skip_values(&mut self, num_values: usize) -> Result<usize> {
@@ -352,7 +371,7 @@ impl ByteArrayDecoder {
                 Ok(vec![true; len])
             }
             ByteArrayDecoder::DeltaByteArray(d) => {
-                let len  = d.read(out, len)?;
+                let len = d.read(out, len)?;
                 Ok(vec![true; len])
             }
         }
@@ -446,7 +465,11 @@ impl ByteArrayDecoderPlain {
                 return Err(ParquetError::EOF("eof decoding byte array".into()));
             }
 
-            let is_null = output.try_push_with_default_value(&buf[start_offset..end_offset], self.validate_utf8, &self.default_value)?;
+            let is_null = output.try_push_with_default_value(
+                &buf[start_offset..end_offset],
+                self.validate_utf8,
+                &self.default_value,
+            )?;
             if is_null {
                 non_null_mask[read] = false;
             }
@@ -636,7 +659,12 @@ impl ByteArrayDecoderDictionary {
         }
 
         self.decoder.read_with_non_null_mask(len, |keys| {
-            output.extend_from_dictionary_with_non_null_mask(keys, dict.offsets.as_slice(), dict.values.as_slice(), non_null_mask.as_slice())
+            output.extend_from_dictionary_with_non_null_mask(
+                keys,
+                dict.offsets.as_slice(),
+                dict.values.as_slice(),
+                non_null_mask.as_slice(),
+            )
         })
     }
 

@@ -314,7 +314,11 @@ impl ColumnValueDecoder for ValueDecoder {
         }
     }
 
-    fn new_with_options(_options: ColumnValueDecoderOptions, col: &ColumnDescPtr, _data_type: ArrowType) -> Self {
+    fn new_with_options(
+        _options: ColumnValueDecoderOptions,
+        col: &ColumnDescPtr,
+        _data_type: ArrowType,
+    ) -> Self {
         Self::new(col)
     }
 
@@ -444,7 +448,11 @@ impl ColumnValueDecoder for ValueDecoder {
         }
     }
 
-    fn read_with_null_mask(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<Vec<bool>> {
+    fn read_with_null_mask(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_values: usize,
+    ) -> Result<Vec<bool>> {
         let len = self.read(out, num_values)?;
         Ok(vec![true; len])
     }
