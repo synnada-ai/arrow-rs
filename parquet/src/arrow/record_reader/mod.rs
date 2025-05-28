@@ -16,6 +16,7 @@
 // under the License.
 
 use arrow_buffer::Buffer;
+use arrow_schema::DataType as ArrowType;
 
 use crate::arrow::record_reader::{
     buffer::ValuesBuffer,
@@ -33,6 +34,8 @@ use crate::data_type::DataType;
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
 
+use super::ColumnValueDecoderOptions;
+
 pub(crate) mod buffer;
 mod definition_levels;
 
@@ -48,7 +51,10 @@ pub(crate) type ColumnReader<CV> =
 /// public implementations. As such this type signature may be changed without
 /// breaking downstream users as it can only be constructed through type aliases
 pub struct GenericRecordReader<V, CV> {
+    column_value_decoder_options: Option<ColumnValueDecoderOptions>,
     column_desc: ColumnDescPtr,
+    // datatype to read as
+    data_type: Option<ArrowType>,
 
     values: V,
     def_levels: Option<DefinitionLevelBuffer>,
@@ -73,11 +79,37 @@ where
         let rep_levels = (desc.max_rep_level() > 0).then(Vec::new);
 
         Self {
+            column_value_decoder_options: None,
             values: V::default(),
             def_levels,
             rep_levels,
             column_reader: None,
             column_desc: desc,
+            data_type: None,
+            num_values: 0,
+            num_records: 0,
+        }
+    }
+
+    /// Create a new [`GenericRecordReader`]
+    pub fn new_with_options(
+        options: ColumnValueDecoderOptions,
+        desc: ColumnDescPtr,
+        data_type: ArrowType,
+    ) -> Self {
+        let def_levels = (desc.max_def_level() > 0)
+            .then(|| DefinitionLevelBuffer::new(&desc, packed_null_mask(&desc)));
+
+        let rep_levels = (desc.max_rep_level() > 0).then(Vec::new);
+
+        Self {
+            column_value_decoder_options: Some(options),
+            values: V::default(),
+            def_levels,
+            rep_levels,
+            column_reader: None,
+            column_desc: desc,
+            data_type: Some(data_type),
             num_values: 0,
             num_records: 0,
         }
@@ -86,7 +118,12 @@ where
     /// Set the current page reader.
     pub fn set_page_reader(&mut self, page_reader: Box<dyn PageReader>) -> Result<()> {
         let descr = &self.column_desc;
-        let values_decoder = CV::new(descr);
+
+        let values_decoder = if let Some(options) = self.column_value_decoder_options.take() {
+            CV::new_with_options(options, descr, self.data_type.clone().unwrap())
+        } else {
+            CV::new(descr)
+        };
 
         let def_level_decoder = (descr.max_def_level() != 0).then(|| {
             DefinitionLevelBufferDecoder::new(descr.max_def_level(), packed_null_mask(descr))
@@ -221,12 +258,10 @@ where
                 general_err!("Definition levels should exist when data is less than levels!")
             })?;
 
-            self.values.pad_nulls(
-                self.num_values,
-                values_read,
-                levels_read,
-                def_levels.nulls().as_slice(),
-            );
+            let null_slice = def_levels.nulls().as_slice();
+
+            self.values
+                .pad_nulls(self.num_values, values_read, levels_read, null_slice);
         }
 
         self.num_records += records_read;
