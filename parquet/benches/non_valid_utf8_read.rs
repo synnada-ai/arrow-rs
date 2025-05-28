@@ -30,8 +30,6 @@ use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use parquet::arrow::ArrowWriter;
 use parquet::arrow::ColumnValueDecoderOptions;
 use parquet::arrow::DefaultValueForInvalidUtf8;
-use std::env;
-use std::fs::File;
 use std::sync::Arc;
 
 fn generate_invalid_file() -> (std::fs::File, Vec<Option<Vec<u8>>>) {
@@ -114,12 +112,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
 
         b.iter(|| {
-            criterion::black_box(validate_utf8_decoding(
+            validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::Null,
                 false,
                 expected.clone(),
-            ));
+            );
         });
     });
 
@@ -141,12 +139,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         expected[1] = Some("invalid");
 
         b.iter(|| {
-            criterion::black_box(validate_utf8_decoding(
+            validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::Default("invalid".to_string()),
                 false,
                 expected.clone(),
-            ));
+            );
         });
     });
 
@@ -154,45 +152,45 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("valid_with_null", |b| {
         b.iter(|| {
-            criterion::black_box(validate_utf8_decoding(
+            validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::Null,
                 false,
                 vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
-            ));
+            );
         });
     });
 
     c.bench_function("valid_with_default_value", |b| {
         b.iter(|| {
-            criterion::black_box(validate_utf8_decoding(
+            validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::Default("invalid".to_string()),
                 false,
                 vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
-            ));
+            );
         });
     });
 
     c.bench_function("valid_with_none", |b| {
         b.iter(|| {
-            criterion::black_box(validate_utf8_decoding(
+            validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::None,
                 false,
                 vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
-            ));
+            );
         });
     });
 
     c.bench_function("valid_with_skip", |b| {
         b.iter(|| {
-            criterion::black_box(validate_utf8_decoding(
+            validate_utf8_decoding(
                 &file,
                 DefaultValueForInvalidUtf8::None,
                 true,
                 vec![Some("ok_1"), Some("ok_2"), Some("ok_3")],
-            ));
+            );
         });
     });
 }
@@ -226,7 +224,7 @@ fn validate_utf8_decoding(
         ));
 
     let metadata = ArrowReaderMetadata::load(file, opts.clone()).unwrap();
-    let mut builder =
+    let builder =
         ParquetRecordBatchReaderBuilder::new_with_metadata(file.try_clone().unwrap(), metadata)
             .with_column_value_decoder_options(opts.column_value_decoder_options);
     let mut reader = builder.build().unwrap();

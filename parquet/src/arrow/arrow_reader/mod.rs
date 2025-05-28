@@ -4681,7 +4681,7 @@ mod tests {
                 ));
 
             let metadata = ArrowReaderMetadata::load(&file, opts.clone()).unwrap();
-            let mut builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
+            let builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
                 file.try_clone().unwrap(),
                 metadata,
             )
@@ -4724,7 +4724,7 @@ mod tests {
         writer.write(&batch).unwrap();
         writer.close().unwrap();
 
-        let mut expected_1 = raw
+        let expected_1 = raw
             .iter()
             .enumerate()
             .map(|(i, _)| {
@@ -4736,7 +4736,7 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        let mut expected_2 = raw
+        let expected_2 = raw
             .iter()
             .enumerate()
             .map(|(i, _)| if i == 1 { None } else { Some("ok") })
@@ -4766,7 +4766,7 @@ mod tests {
                 ));
 
             let metadata = ArrowReaderMetadata::load(&file, opts.clone()).unwrap();
-            let mut builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
+            let builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
                 file.try_clone().unwrap(),
                 metadata,
             )
