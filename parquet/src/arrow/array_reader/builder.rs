@@ -44,6 +44,8 @@ use crate::schema::types::{ColumnDescriptor, ColumnPath, Type};
 // THESE IMPORTS ARE ARAS ONLY:
 use crate::arrow::ColumnValueDecoderOptions;
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Create array reader from parquet schema, projection mask, and parquet file reader.
 pub fn build_array_reader(
     options: ColumnValueDecoderOptions,
@@ -59,6 +61,7 @@ pub fn build_array_reader(
     Ok(reader)
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 fn build_reader(
     options: ColumnValueDecoderOptions,
     field: &ParquetField,
@@ -82,6 +85,8 @@ fn build_reader(
     }
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Build array reader for map type.
 fn build_map_reader(
     options: ColumnValueDecoderOptions,
@@ -134,6 +139,8 @@ fn build_map_reader(
     }
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Build array reader for list type.
 fn build_list_reader(
     options: ColumnValueDecoderOptions,
@@ -182,6 +189,8 @@ fn build_list_reader(
     Ok(reader)
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Build array reader for fixed-size list type.
 fn build_fixed_size_list_reader(
     options: ColumnValueDecoderOptions,
@@ -220,6 +229,8 @@ fn build_fixed_size_list_reader(
     Ok(reader)
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Creates primitive array reader for each primitive type.
 fn build_primitive_reader(
     options: ColumnValueDecoderOptions,
@@ -316,6 +327,7 @@ fn build_primitive_reader(
     Ok(Some(reader))
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 fn build_struct_reader(
     options: ColumnValueDecoderOptions,
     field: &ParquetField,

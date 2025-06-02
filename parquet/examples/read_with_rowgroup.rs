@@ -40,7 +40,6 @@ use arrow_data::UnsafeFlag;
 use parquet::arrow::arrow_reader::ArrowReaderOptions;
 use parquet::arrow::{ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};
 
-
 /// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
