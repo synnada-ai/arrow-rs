@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -27,10 +34,8 @@ use bytes::Bytes;
 use crate::arrow::array_reader::byte_array::{ByteArrayDecoder, ByteArrayDecoderPlain};
 use crate::arrow::array_reader::{read_records, skip_records, ArrayReader};
 use crate::arrow::buffer::{dictionary_buffer::DictionaryBuffer, offset_buffer::OffsetBuffer};
-use crate::arrow::decoder::DefaultValueForInvalidUtf8;
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -39,6 +44,12 @@ use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
 use crate::util::bit_util::FromBytes;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::decoder::DefaultValueForInvalidUtf8;
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS MACRO IS COMMON, MODIFIED BY ARAS
+///
 /// A macro to reduce verbosity of [`make_byte_array_dictionary_reader`]
 macro_rules! make_reader {
     (
@@ -63,6 +74,8 @@ macro_rules! make_reader {
     }
 }
 
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column
 ///
 /// This will attempt to preserve any dictionary encoding present in the parquet data
@@ -205,6 +218,8 @@ enum MaybeDictionaryDecoder {
     Fallback(ByteArrayDecoder),
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// A [`ColumnValueDecoder`] for dictionary encoded variable length byte arrays
 struct DictionaryDecoder<K, V> {
     /// The current dictionary
@@ -248,6 +263,7 @@ where
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     fn new_with_options(
         options: ColumnValueDecoderOptions,
         col: &ColumnDescPtr,
@@ -274,6 +290,7 @@ where
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn set_dict(
         &mut self,
         buf: Bytes,
@@ -312,6 +329,7 @@ where
         Ok(())
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn set_data(
         &mut self,
         encoding: Encoding,
@@ -343,6 +361,7 @@ where
         Ok(())
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn read(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<usize> {
         match self.decoder.as_mut().expect("decoder set") {
             MaybeDictionaryDecoder::Fallback(decoder) => {
@@ -404,6 +423,7 @@ where
         }
     }
 
+    /// THIS METHOD IS ARAS ONLY
     fn read_with_null_mask(
         &mut self,
         out: &mut Self::Buffer,
