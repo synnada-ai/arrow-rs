@@ -229,7 +229,7 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         decoder.read(out, num_values, self.dict.as_ref())
     }
 
-    /// THIS FUNCTION IS ARAS ONLY
+    /// THIS METHOD IS ARAS ONLY
     fn read_with_null_mask(
         &mut self,
         out: &mut Self::Buffer,
