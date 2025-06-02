@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -16,16 +23,10 @@
 // under the License.
 
 use arrow::util::pretty::print_batches;
-use arrow_data::UnsafeFlag;
 use bytes::{Buf, Bytes};
-use parquet::arrow::arrow_reader::{
-    ArrowReaderOptions, ParquetRecordBatchReader, RowGroups, RowSelection,
-};
+use parquet::arrow::arrow_reader::{ParquetRecordBatchReader, RowGroups, RowSelection};
 use parquet::arrow::async_reader::AsyncFileReader;
-use parquet::arrow::{
-    parquet_to_arrow_field_levels, ColumnValueDecoderOptions, DefaultValueForInvalidUtf8,
-    ProjectionMask,
-};
+use parquet::arrow::{parquet_to_arrow_field_levels, ProjectionMask};
 use parquet::column::page::{PageIterator, PageReader};
 use parquet::errors::{ParquetError, Result};
 use parquet::file::metadata::RowGroupMetaData;
@@ -33,6 +34,11 @@ use parquet::file::reader::{ChunkReader, Length};
 use parquet::file::serialized_reader::SerializedPageReader;
 use std::sync::Arc;
 use tokio::fs::File;
+
+// THESE IMPORTS ARE ARAS ONLY:
+use arrow_data::UnsafeFlag;
+use parquet::arrow::arrow_reader::ArrowReaderOptions;
+use parquet::arrow::{ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
