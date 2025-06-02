@@ -195,6 +195,7 @@ struct ByteArrayColumnValueDecoder<I: OffsetSizeTrait> {
 impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
     type Buffer = OffsetBuffer<I>;
 
+    /// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
     fn new(desc: &ColumnDescPtr) -> Self {
         let validate_utf8 = desc.converted_type() == ConvertedType::UTF8;
         Self {
