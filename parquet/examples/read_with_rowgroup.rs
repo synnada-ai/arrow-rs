@@ -40,6 +40,8 @@ use arrow_data::UnsafeFlag;
 use parquet::arrow::arrow_reader::ArrowReaderOptions;
 use parquet::arrow::{ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};
 
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let testdata = arrow::util::test_util::parquet_test_data();
@@ -117,6 +119,7 @@ impl ChunkReader for ColumnChunkData {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
 #[derive(Clone)]
 pub struct InMemoryRowGroup {
     options: ArrowReaderOptions,
@@ -152,6 +155,7 @@ impl RowGroups for InMemoryRowGroup {
 }
 
 impl InMemoryRowGroup {
+    /// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
     pub fn create(
         options: ArrowReaderOptions,
         metadata: RowGroupMetaData,

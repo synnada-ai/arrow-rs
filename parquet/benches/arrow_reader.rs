@@ -631,6 +631,7 @@ fn create_f16_by_bytes_reader(
     }
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_decimal_by_bytes_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
@@ -658,6 +659,7 @@ fn create_fixed_len_byte_array_reader(
     make_fixed_len_byte_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_byte_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
@@ -671,6 +673,7 @@ fn create_byte_array_reader(
     .unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_byte_view_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
@@ -684,6 +687,7 @@ fn create_byte_view_array_reader(
     .unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_string_view_byte_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
@@ -697,6 +701,7 @@ fn create_string_view_byte_array_reader(
     .unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_string_byte_array_dictionary_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
