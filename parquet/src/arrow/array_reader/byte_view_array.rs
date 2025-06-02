@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -20,7 +27,6 @@ use crate::arrow::buffer::view_buffer::ViewBuffer;
 use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -36,6 +42,11 @@ use arrow_schema::DataType as ArrowType;
 use bytes::Bytes;
 use std::any::Any;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS FUNCION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column to view types.
 pub fn make_byte_view_array_reader(
     options: ColumnValueDecoderOptions,
@@ -148,6 +159,7 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     fn new_with_options(
         options: ColumnValueDecoderOptions,
         col: &ColumnDescPtr,
@@ -217,6 +229,7 @@ impl ColumnValueDecoder for ByteViewArrayColumnValueDecoder {
         decoder.read(out, num_values, self.dict.as_ref())
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     fn read_with_null_mask(
         &mut self,
         out: &mut Self::Buffer,
