@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -84,10 +91,10 @@ impl DictIndexDecoder {
             values_read += to_read;
             self.max_remaining_values -= to_read;
         }
-
         Ok(values_read)
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     pub fn read_with_non_null_mask<F: FnMut(&[i32]) -> Result<Vec<bool>>>(
         &mut self,
         len: usize,
@@ -120,7 +127,6 @@ impl DictIndexDecoder {
             values_read += to_read;
             self.max_remaining_values -= to_read;
         }
-
         Ok(values_read_non_null_mask)
     }
 
