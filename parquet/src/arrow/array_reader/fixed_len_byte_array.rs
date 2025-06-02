@@ -28,7 +28,6 @@ use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::buffer::ValuesBuffer;
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{Encoding, Type};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -46,6 +45,9 @@ use half::f16;
 use std::any::Any;
 use std::ops::Range;
 use std::sync::Arc;
+
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::ColumnValueDecoderOptions;
 
 /// Returns an [`ArrayReader`] that decodes the provided fixed length byte array column
 pub fn make_fixed_len_byte_array_reader(
