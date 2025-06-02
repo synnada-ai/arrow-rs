@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -18,10 +25,9 @@
 use crate::arrow::array_reader::{read_records, skip_records, ArrayReader};
 use crate::arrow::buffer::bit_util::sign_extend_be;
 use crate::arrow::buffer::offset_buffer::OffsetBuffer;
-use crate::arrow::decoder::{DefaultValueForInvalidUtf8, DeltaByteArrayDecoder, DictIndexDecoder};
+use crate::arrow::decoder::{DeltaByteArrayDecoder, DictIndexDecoder};
 use crate::arrow::record_reader::GenericRecordReader;
 use crate::arrow::schema::parquet_to_arrow_field;
-use crate::arrow::ColumnValueDecoderOptions;
 use crate::basic::{ConvertedType, Encoding};
 use crate::column::page::PageIterator;
 use crate::column::reader::decoder::ColumnValueDecoder;
@@ -38,6 +44,12 @@ use bytes::Bytes;
 use std::any::Any;
 use std::sync::Arc;
 
+// THESE IMPORTS ARE ARAS ONLY
+use crate::arrow::decoder::DefaultValueForInvalidUtf8;
+use crate::arrow::ColumnValueDecoderOptions;
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+///
 /// Returns an [`ArrayReader`] that decodes the provided byte array column
 pub fn make_byte_array_reader(
     options: ColumnValueDecoderOptions,
@@ -169,6 +181,8 @@ impl<I: OffsetSizeTrait> ArrayReader for ByteArrayReader<I> {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// A [`ColumnValueDecoder`] for variable length byte arrays
 struct ByteArrayColumnValueDecoder<I: OffsetSizeTrait> {
     dict: Option<OffsetBuffer<I>>,
@@ -192,6 +206,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     fn new_with_options(
         options: ColumnValueDecoderOptions,
         desc: &ColumnDescPtr,
@@ -209,6 +224,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn set_dict(
         &mut self,
         buf: Bytes,
@@ -241,6 +257,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         Ok(())
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn set_data(
         &mut self,
         encoding: Encoding,
@@ -259,6 +276,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         Ok(())
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn read(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<usize> {
         let decoder = self
             .decoder
@@ -274,6 +292,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         Ok(non_null_mask.len())
     }
 
+    /// THIS METHOD IS ARAS ONLY
     fn read_with_null_mask(
         &mut self,
         out: &mut Self::Buffer,
@@ -311,6 +330,7 @@ pub enum ByteArrayDecoder {
 }
 
 impl ByteArrayDecoder {
+    /// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
     pub fn new(
         encoding: Encoding,
         data: Bytes,
@@ -347,6 +367,8 @@ impl ByteArrayDecoder {
         Ok(decoder)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Read up to `len` values to `out` with the optional dictionary
     pub fn read<I: OffsetSizeTrait>(
         &mut self,
@@ -397,6 +419,8 @@ impl ByteArrayDecoder {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Decoder from [`Encoding::PLAIN`] data to [`OffsetBuffer`]
 pub struct ByteArrayDecoderPlain {
     buf: Bytes,
@@ -410,6 +434,7 @@ pub struct ByteArrayDecoderPlain {
 }
 
 impl ByteArrayDecoderPlain {
+    /// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
     pub fn new(
         buf: Bytes,
         num_levels: usize,
@@ -426,6 +451,7 @@ impl ByteArrayDecoderPlain {
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     pub fn read<I: OffsetSizeTrait>(
         &mut self,
         output: &mut OffsetBuffer<I>,
@@ -646,6 +672,7 @@ impl ByteArrayDecoderDictionary {
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn read<I: OffsetSizeTrait>(
         &mut self,
         output: &mut OffsetBuffer<I>,
