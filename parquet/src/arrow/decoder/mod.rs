@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -20,11 +27,14 @@
 mod delta_byte_array;
 mod dictionary_index;
 
-use arrow_data::UnsafeFlag;
-
 pub use delta_byte_array::DeltaByteArrayDecoder;
 pub use dictionary_index::DictIndexDecoder;
 
+// THESE IMPORTS ARE ARAS ONLY
+use arrow_data::UnsafeFlag;
+
+/// THIS ENUM IS ARAS ONLY
+///
 /// Default value for invalid UTF-8 strings.
 ///
 /// This enum is used to specify the default value for invalid UTF-8 strings
@@ -43,6 +53,8 @@ pub enum DefaultValueForInvalidUtf8 {
     None,
 }
 
+/// THIS STRUCT IS ARAS ONLY
+///
 /// Options for column value decoding behavior.
 ///
 /// Contains settings that control how column values are decoded, such as
