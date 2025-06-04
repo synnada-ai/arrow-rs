@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -65,6 +72,7 @@ use crate::arrow::schema::ParquetField;
 #[cfg(feature = "object_store")]
 pub use store::*;
 
+// THESE IMPORTS ARE ARAS ONLY
 use super::decoder::ColumnValueDecoderOptions;
 
 /// The asynchronous interface used by [`ParquetRecordBatchStream`] to read parquet files
@@ -480,6 +488,8 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
         Ok(Some(Sbbf::new(&bitset)))
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Build a new [`ParquetRecordBatchStream`]
     ///
     /// See examples on [`ParquetRecordBatchStreamBuilder::new`]
@@ -540,6 +550,8 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
 
 type ReadResult<T> = Result<(ReaderFactory<T>, Option<ParquetRecordBatchReader>)>;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// [`ReaderFactory`] is used by [`ParquetRecordBatchStream`] to create
 /// [`ParquetRecordBatchReader`]
 struct ReaderFactory<T> {
@@ -555,6 +567,7 @@ struct ReaderFactory<T> {
 
     offset: Option<usize>,
 
+    /// THIS MEMBER IS ARAS ONLY
     column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
@@ -562,6 +575,8 @@ impl<T> ReaderFactory<T>
 where
     T: AsyncFileReader + Send,
 {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Reads the next row group with the provided `selection`, `projection` and `batch_size`
     ///
     /// Note: this captures self so that the resulting future has a static lifetime
@@ -1101,7 +1116,6 @@ mod tests {
         ArrowPredicateFn, ParquetRecordBatchReaderBuilder, RowSelector,
     };
     use crate::arrow::arrow_reader::{ArrowReaderMetadata, ArrowReaderOptions};
-    use crate::arrow::decoder::DefaultValueForInvalidUtf8;
     use crate::arrow::schema::parquet_to_arrow_schema_and_fields;
     use crate::arrow::ArrowWriter;
     use crate::file::metadata::ParquetMetaDataReader;
@@ -1112,17 +1126,23 @@ mod tests {
     use arrow_array::cast::AsArray;
     use arrow_array::types::Int32Type;
     use arrow_array::{
-        Array, ArrayRef, DictionaryArray, Int32Array, Int8Array, RecordBatchReader, Scalar,
-        StringArray, StringViewArray, StructArray, UInt64Array,
+        Array, ArrayRef, Int32Array, Int8Array, RecordBatchReader, Scalar, StringArray,
+        StructArray, UInt64Array,
     };
-    use arrow_data::UnsafeFlag;
     use arrow_schema::{DataType, Field, Schema};
     use futures::{StreamExt, TryStreamExt};
     use rand::{rng, Rng};
     use std::collections::HashMap;
-    use std::io::{Read, Seek, Write};
     use std::sync::{Arc, Mutex};
     use tempfile::tempfile;
+
+    // THESE IMPORTS ARE ARAS ONLY
+    use std::io::{Read, Seek, Write};
+
+    use crate::arrow::decoder::DefaultValueForInvalidUtf8;
+
+    use arrow_array::{DictionaryArray, StringViewArray};
+    use arrow_data::UnsafeFlag;
 
     #[derive(Clone)]
     struct TestReader {
@@ -1789,6 +1809,7 @@ mod tests {
         assert_eq!(total_rows, 730);
     }
 
+    /// THIS TEST IS COMMON, MODIFIED BY ARAS
     #[tokio::test]
     async fn test_in_memory_row_group_sparse() {
         let testdata = arrow::util::test_util::parquet_test_data();
@@ -2362,6 +2383,7 @@ mod tests {
         assert_eq!(result.len(), 1);
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_skip_utf8_validation() {
         let mut file = tempfile().unwrap();
@@ -2411,6 +2433,7 @@ mod tests {
         assert_eq!(arr.value(2), "c");
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_skip_utf8view_validation() {
         let mut file = tempfile().unwrap();
@@ -2464,6 +2487,7 @@ mod tests {
         assert_eq!(arr.value(2), "c");
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_skip_utf8_dict_validation() {
         let mut file = tempfile().unwrap();
@@ -2519,6 +2543,7 @@ mod tests {
         assert_eq!(arr.value(2), "c");
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_utf8_validation_with_default_1() {
         let mut file = tempfile::tempfile().unwrap();
@@ -2579,9 +2604,10 @@ mod tests {
         assert_eq!(arr.value(2), "c");
     }
 
-    // first byte is smaller than -0x40
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_utf8_validation_with_default_2() {
+        // first byte is smaller than -0x40
         let mut file = tempfile::tempfile().unwrap();
         let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
         let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
@@ -2639,6 +2665,7 @@ mod tests {
         assert_eq!(arr.value(2), "c");
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_utf8_validation_with_default_null() {
         let mut file = tempfile::tempfile().unwrap();
@@ -2702,6 +2729,7 @@ mod tests {
         assert_eq!(arr.value(3), "c");
     }
 
+    /// THIS TEST IS ARAS ONLY
     #[tokio::test]
     async fn test_utf8_validation_with_default_null_n100() {
         let mut file = tempfile::tempfile().unwrap();
