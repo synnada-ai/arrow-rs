@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -261,6 +268,9 @@ mod tests {
     use arrow_schema::Fields;
     use std::sync::Arc;
 
+    // THESE IMPORTS ARE ARAS ONLY
+    use crate::arrow::ColumnValueDecoderOptions;
+
     fn list_type<OffsetSize: OffsetSizeTrait>(
         data_type: ArrowType,
         item_nullable: bool,
@@ -511,6 +521,7 @@ mod tests {
         test_list_array::<i64>()
     }
 
+    /// THIS TEST IS COMMON, MODIFIED BY ARAS
     #[test]
     fn test_nested_lists() {
         // Construct column schema
@@ -563,7 +574,13 @@ mod tests {
         )
         .unwrap();
 
-        let mut array_reader = build_array_reader(fields.as_ref(), &mask, &file_reader).unwrap();
+        let mut array_reader = build_array_reader(
+            ColumnValueDecoderOptions::default(),
+            fields.as_ref(),
+            &mask,
+            &file_reader,
+        )
+        .unwrap();
 
         let batch = array_reader.next_batch(100).unwrap();
         assert_eq!(batch.data_type(), array_reader.get_data_type());
