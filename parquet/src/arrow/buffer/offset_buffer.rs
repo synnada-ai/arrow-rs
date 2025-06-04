@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -15,10 +22,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::collections::HashMap;
-
 use crate::arrow::buffer::bit_util::iter_set_bits_rev;
-use crate::arrow::decoder::DefaultValueForInvalidUtf8;
 use crate::arrow::record_reader::buffer::ValuesBuffer;
 use crate::errors::{ParquetError, Result};
 use crate::util::utf8::check_valid_utf8;
@@ -26,6 +30,11 @@ use arrow_array::{make_array, ArrayRef, OffsetSizeTrait};
 use arrow_buffer::{ArrowNativeType, Buffer};
 use arrow_data::ArrayDataBuilder;
 use arrow_schema::DataType as ArrowType;
+
+// THESE IMPORTS ARE ARAS ONLY
+use std::collections::HashMap;
+
+use crate::arrow::decoder::DefaultValueForInvalidUtf8;
 
 /// A buffer of variable-sized byte arrays that can be converted into
 /// a corresponding [`ArrayRef`]
@@ -84,6 +93,8 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
         Ok(())
     }
 
+    /// THIS METHOD IS ARAS ONLY
+    ///
     /// try_push with default value for non-UTF8 data
     pub fn try_push_with_default_value(
         &mut self,
@@ -162,6 +173,8 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
         Ok(false)
     }
 
+    /// THIS METHOD IS ARAS ONLY
+    ///    
     /// Extends this buffer with a list of keys
     ///
     /// For each value `key` in `keys` this will insert
