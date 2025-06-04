@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -81,6 +88,7 @@ pub trait DefinitionLevelDecoder: ColumnLevelDecoder {
         num_levels: usize,
     ) -> Result<(usize, usize, usize)>;
 
+    /// THIS METHOD IS ARAS ONLY
     fn update_def_levels(
         &mut self,
         out: &mut Self::Buffer,
@@ -102,6 +110,7 @@ pub trait ColumnValueDecoder {
     /// Create a new [`ColumnValueDecoder`]
     fn new(col: &ColumnDescPtr) -> Self;
 
+    /// THIS FUNCTION IS ARAS ONLY
     #[cfg(feature = "arrow")]
     fn new_with_options(
         options: crate::arrow::ColumnValueDecoderOptions,
@@ -144,6 +153,8 @@ pub trait ColumnValueDecoder {
     /// Implementations may panic if `range` overlaps with already written data
     ///
     fn read(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<usize>;
+
+    /// THIS METHOD IS ARAS ONLY
     fn read_with_null_mask(
         &mut self,
         out: &mut Self::Buffer,
@@ -177,6 +188,7 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
     #[cfg(feature = "arrow")]
     fn new_with_options(
         _options: crate::arrow::ColumnValueDecoderOptions,
@@ -268,6 +280,7 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
         Ok(read)
     }
 
+    /// THIS METHOD IS ARAS ONLY
     fn read_with_null_mask(
         &mut self,
         out: &mut Self::Buffer,
@@ -349,6 +362,7 @@ impl ColumnLevelDecoder for DefinitionLevelDecoderImpl {
 }
 
 impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn read_def_levels(
         &mut self,
         out: &mut Self::Buffer,
@@ -365,6 +379,7 @@ impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
         Ok((values_read, levels_read, start))
     }
 
+    /// THIS METHOD IS ARAS ONLY
     fn update_def_levels(
         &mut self,
         out: &mut Self::Buffer,
@@ -380,6 +395,7 @@ impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
         Ok((values_read, levels_read))
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn skip_def_levels(&mut self, num_levels: usize) -> Result<(usize, usize)> {
         let mut level_skip = 0;
         let mut value_skip = 0;
