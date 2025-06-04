@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -16,7 +23,6 @@
 // under the License.
 
 use arrow_buffer::Buffer;
-use arrow_schema::DataType as ArrowType;
 
 use crate::arrow::record_reader::{
     buffer::ValuesBuffer,
@@ -34,10 +40,13 @@ use crate::data_type::DataType;
 use crate::errors::{ParquetError, Result};
 use crate::schema::types::ColumnDescPtr;
 
-use super::ColumnValueDecoderOptions;
-
 pub(crate) mod buffer;
 mod definition_levels;
+
+// THESE IMPORTS ARE ARAS ONLY
+use super::ColumnValueDecoderOptions;
+
+use arrow_schema::DataType as ArrowType;
 
 /// A `RecordReader` is a stateful column reader that delimits semantic records.
 pub type RecordReader<T> = GenericRecordReader<Vec<<T as DataType>::T>, ColumnValueDecoderImpl<T>>;
@@ -45,15 +54,20 @@ pub type RecordReader<T> = GenericRecordReader<Vec<<T as DataType>::T>, ColumnVa
 pub(crate) type ColumnReader<CV> =
     GenericColumnReader<RepetitionLevelDecoderImpl, DefinitionLevelBufferDecoder, CV>;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// A generic stateful column reader that delimits semantic records
 ///
 /// This type is hidden from the docs, and relies on private traits with no
 /// public implementations. As such this type signature may be changed without
 /// breaking downstream users as it can only be constructed through type aliases
 pub struct GenericRecordReader<V, CV> {
+    /// THIS MEMBER IS ARAS ONLY
     column_value_decoder_options: Option<ColumnValueDecoderOptions>,
     column_desc: ColumnDescPtr,
-    // datatype to read as
+    /// THIS MEMBER IS ARAS ONLY
+    ///
+    /// Data type of the column, if known.
     data_type: Option<ArrowType>,
 
     values: V,
@@ -71,6 +85,8 @@ where
     V: ValuesBuffer,
     CV: ColumnValueDecoder<Buffer = V>,
 {
+    /// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`GenericRecordReader`]
     pub fn new(desc: ColumnDescPtr) -> Self {
         let def_levels = (desc.max_def_level() > 0)
@@ -91,6 +107,8 @@ where
         }
     }
 
+    /// THIS FUNCTION IS ARAS ONLY
+    ///
     /// Create a new [`GenericRecordReader`]
     pub fn new_with_options(
         options: ColumnValueDecoderOptions,
@@ -115,6 +133,8 @@ where
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Set the current page reader.
     pub fn set_page_reader(&mut self, page_reader: Box<dyn PageReader>) -> Result<()> {
         let descr = &self.column_desc;
@@ -243,6 +263,8 @@ where
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Try to read one batch of data returning the number of records read
     fn read_one_batch(&mut self, batch_size: usize) -> Result<usize> {
         let (records_read, values_read, levels_read) =
