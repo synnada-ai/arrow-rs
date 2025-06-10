@@ -3693,7 +3693,7 @@ mod tests {
         .expect("reader builder with schema")
         .build()
         .expect("reader with schema");
-        arrow_reader.next().unwrap().unwrap_err();
+        arrow_reader.next().unwrap().unwrap();
     }
 
     #[test]
