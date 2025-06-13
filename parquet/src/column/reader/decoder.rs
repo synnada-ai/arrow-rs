@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -79,6 +86,15 @@ pub trait DefinitionLevelDecoder: ColumnLevelDecoder {
         &mut self,
         out: &mut Self::Buffer,
         num_levels: usize,
+    ) -> Result<(usize, usize, usize)>;
+
+    /// THIS METHOD IS ARAS ONLY
+    fn update_def_levels(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_levels: usize,
+        start_offset: usize,
+        non_null_mask: Vec<bool>,
     ) -> Result<(usize, usize)>;
 
     /// Skips over `num_levels` definition levels
@@ -93,6 +109,14 @@ pub trait ColumnValueDecoder {
 
     /// Create a new [`ColumnValueDecoder`]
     fn new(col: &ColumnDescPtr) -> Self;
+
+    /// THIS FUNCTION IS ARAS ONLY
+    #[cfg(feature = "arrow")]
+    fn new_with_options(
+        options: crate::arrow::ColumnValueDecoderOptions,
+        col: &ColumnDescPtr,
+        data_type: crate::arrow::ArrowDataType,
+    ) -> Self;
 
     /// Set the current dictionary page
     fn set_dict(
@@ -130,6 +154,13 @@ pub trait ColumnValueDecoder {
     ///
     fn read(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<usize>;
 
+    /// THIS METHOD IS ARAS ONLY
+    fn read_with_null_mask(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_values: usize,
+    ) -> Result<Vec<bool>>;
+
     /// Skips over `num_values` values
     ///
     /// Returns the number of values skipped
@@ -155,6 +186,16 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
             current_encoding: None,
             decoders: Default::default(),
         }
+    }
+
+    /// THIS FUNCTION IS ARAS ONLY
+    #[cfg(feature = "arrow")]
+    fn new_with_options(
+        _options: crate::arrow::ColumnValueDecoderOptions,
+        col: &ColumnDescPtr,
+        _data_type: crate::arrow::ArrowDataType,
+    ) -> Self {
+        Self::new(col)
     }
 
     fn set_dict(
@@ -239,6 +280,16 @@ impl<T: DataType> ColumnValueDecoder for ColumnValueDecoderImpl<T> {
         Ok(read)
     }
 
+    /// THIS METHOD IS ARAS ONLY
+    fn read_with_null_mask(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_values: usize,
+    ) -> Result<Vec<bool>> {
+        let len = self.read(out, num_values)?;
+        Ok(vec![true; len])
+    }
+
     fn skip_values(&mut self, num_values: usize) -> Result<usize> {
         let encoding = self
             .current_encoding
@@ -311,11 +362,12 @@ impl ColumnLevelDecoder for DefinitionLevelDecoderImpl {
 }
 
 impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn read_def_levels(
         &mut self,
         out: &mut Self::Buffer,
         num_levels: usize,
-    ) -> Result<(usize, usize)> {
+    ) -> Result<(usize, usize, usize)> {
         // TODO: Push vec into decoder (#5177)
         let start = out.len();
         out.resize(start + num_levels, 0);
@@ -324,9 +376,26 @@ impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
 
         let iter = out.iter().skip(start);
         let values_read = iter.filter(|x| **x == self.max_level).count();
+        Ok((values_read, levels_read, start))
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    fn update_def_levels(
+        &mut self,
+        out: &mut Self::Buffer,
+        num_levels: usize,
+        start_offset: usize,
+        _non_null_mask: Vec<bool>,
+    ) -> Result<(usize, usize)> {
+        let levels_read = out.len() - start_offset;
+        debug_assert_eq!(levels_read, num_levels);
+
+        let iter = out.iter().skip(start_offset);
+        let values_read = iter.filter(|x| **x == self.max_level).count();
         Ok((values_read, levels_read))
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn skip_def_levels(&mut self, num_levels: usize) -> Result<(usize, usize)> {
         let mut level_skip = 0;
         let mut value_skip = 0;
@@ -336,7 +405,7 @@ impl DefinitionLevelDecoder for DefinitionLevelDecoderImpl {
 
             let to_read = remaining_levels.min(SKIP_BUFFER_SIZE);
             buf.resize(to_read, 0);
-            let (values_read, levels_read) = self.read_def_levels(&mut buf, to_read)?;
+            let (values_read, levels_read, _) = self.read_def_levels(&mut buf, to_read)?;
             if levels_read == 0 {
                 // Reached end of page
                 break;
