@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -286,6 +293,8 @@ impl RecordBatch {
         Self::try_new_impl(schema, columns, &options)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Creates a `RecordBatch` from a schema and columns, without validation.
     ///
     /// See [`Self::try_new`] for the checked version.
@@ -314,6 +323,8 @@ impl RecordBatch {
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Creates a `RecordBatch` from a schema and columns, with additional options,
     /// such as whether to strictly validate field names.
     ///
@@ -342,6 +353,8 @@ impl RecordBatch {
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Validate the schema and columns using [`RecordBatchOptions`]. Returns an error
     /// if any validation check fails, otherwise returns the created [`Self`]
     fn try_new_impl(
@@ -421,6 +434,8 @@ impl RecordBatch {
         (self.schema, self.columns, self.row_count)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Override the schema of this [`RecordBatch`]
     ///
     /// Returns an error if `schema` is not a superset of the current schema
@@ -475,6 +490,8 @@ impl RecordBatch {
         &mut schema.metadata
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Projects the schema onto the specified columns
     pub fn project(&self, indices: &[usize]) -> Result<RecordBatch, ArrowError> {
         let projected_schema = self.schema.project(indices)?;
@@ -703,6 +720,8 @@ impl RecordBatch {
         self.columns.remove(index)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Return a new RecordBatch where each column is sliced
     /// according to `offset` and `length`
     ///
@@ -848,6 +867,8 @@ impl RecordBatch {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Options that control the behaviour used when creating a [`RecordBatch`].
 #[derive(Debug)]
 #[non_exhaustive]
@@ -897,6 +918,7 @@ impl Default for RecordBatchOptions {
     }
 }
 impl From<StructArray> for RecordBatch {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn from(value: StructArray) -> Self {
         let row_count = value.len();
         let (fields, columns, nulls) = value.into_parts();
@@ -1181,6 +1203,7 @@ mod tests {
         assert_eq!(err.to_string(), "Invalid argument error: column types must match schema types, expected Int32 but found Int64 at column index 0");
     }
 
+    // THIS TEST IS COMMON, MODIFIED BY ARAS
     #[test]
     fn create_record_batch_field_name_mismatch() {
         let fields = vec![
@@ -1628,6 +1651,7 @@ mod tests {
         assert_eq!(expected, record_batch.project(&[0, 2]).unwrap());
     }
 
+    // THIS TEST IS COMMON, MODIFIED BY ARAS
     #[test]
     fn project_empty() {
         let c: ArrayRef = Arc::new(StringArray::from(vec!["d", "e", "f"]));

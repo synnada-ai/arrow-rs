@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -49,6 +56,11 @@ mod read_plan;
 mod selection;
 pub mod statistics;
 
+// THESE IMPORTS ARE ARAS ONLY
+use super::decoder::ColumnValueDecoderOptions;
+
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Builder for constructing Parquet readers that decode into [Apache Arrow]
 /// arrays.
 ///
@@ -116,6 +128,9 @@ pub struct ArrowReaderBuilder<T> {
     pub(crate) limit: Option<usize>,
 
     pub(crate) offset: Option<usize>,
+
+    /// THIS MEMBER IS ARAS ONLY
+    pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl<T: Debug> Debug for ArrowReaderBuilder<T> {
@@ -137,6 +152,7 @@ impl<T: Debug> Debug for ArrowReaderBuilder<T> {
 }
 
 impl<T> ArrowReaderBuilder<T> {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     pub(crate) fn new_builder(input: T, metadata: ArrowReaderMetadata) -> Self {
         Self {
             input,
@@ -150,6 +166,7 @@ impl<T> ArrowReaderBuilder<T> {
             selection: None,
             limit: None,
             offset: None,
+            column_value_decoder_options: metadata.column_value_decoder_options,
         }
     }
 
@@ -166,6 +183,13 @@ impl<T> ArrowReaderBuilder<T> {
     /// Returns the arrow [`SchemaRef`] for this parquet file
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Returns a reference to the [`ColumnValueDecoderOptions`] for this parquet file
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
     }
 
     /// Set the size of [`RecordBatch`] to produce. Defaults to 1024
@@ -300,8 +324,23 @@ impl<T> ArrowReaderBuilder<T> {
             ..self
         }
     }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Provide column value decoder options to use when decoding column values
+    pub fn with_column_value_decoder_options(
+        self,
+        column_value_decoder_options: ColumnValueDecoderOptions,
+    ) -> Self {
+        Self {
+            column_value_decoder_options,
+            ..self
+        }
+    }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// Options that control how metadata is read for a parquet file
 ///
 /// See [`ArrowReaderBuilder`] for how to configure how the column data
@@ -320,12 +359,29 @@ pub struct ArrowReaderOptions {
     /// If encryption is enabled, the file decryption properties can be provided
     #[cfg(feature = "encryption")]
     pub(crate) file_decryption_properties: Option<FileDecryptionProperties>,
+    /// THIS MEMBER IS ARAS ONLY
+    ///
+    /// The options used to decode column values
+    pub column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl ArrowReaderOptions {
     /// Create a new [`ArrowReaderOptions`] with the default settings
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Set the [`ColumnValueDecoderOptions`] to use when decoding column values
+    pub fn with_column_value_decoder_options(
+        self,
+        column_value_decoder_options: ColumnValueDecoderOptions,
+    ) -> Self {
+        Self {
+            column_value_decoder_options,
+            ..self
+        }
     }
 
     /// Skip decoding the embedded arrow metadata (defaults to `false`)
@@ -452,6 +508,8 @@ impl ArrowReaderOptions {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// The metadata necessary to construct a [`ArrowReaderBuilder`]
 ///
 /// Note this structure is cheaply clone-able as it consists of several arcs.
@@ -474,6 +532,9 @@ pub struct ArrowReaderMetadata {
     pub(crate) schema: SchemaRef,
 
     pub(crate) fields: Option<Arc<ParquetField>>,
+
+    /// THIS MEMBER IS ARAS ONLY
+    pub(crate) column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl ArrowReaderMetadata {
@@ -496,6 +557,8 @@ impl ArrowReaderMetadata {
         Self::try_new(Arc::new(metadata), options)
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`ArrowReaderMetadata`]
     ///
     /// # Notes
@@ -504,7 +567,11 @@ impl ArrowReaderMetadata {
     /// See [`Self::load`] for more details.
     pub fn try_new(metadata: Arc<ParquetMetaData>, options: ArrowReaderOptions) -> Result<Self> {
         match options.supplied_schema {
-            Some(supplied_schema) => Self::with_supplied_schema(metadata, supplied_schema.clone()),
+            Some(supplied_schema) => Self::with_supplied_schema(
+                metadata,
+                supplied_schema,
+                options.column_value_decoder_options,
+            ),
             None => {
                 let kv_metadata = match options.skip_arrow_metadata {
                     true => None,
@@ -521,14 +588,17 @@ impl ArrowReaderMetadata {
                     metadata,
                     schema: Arc::new(schema),
                     fields: fields.map(Arc::new),
+                    column_value_decoder_options: options.column_value_decoder_options,
                 })
             }
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     fn with_supplied_schema(
         metadata: Arc<ParquetMetaData>,
         supplied_schema: SchemaRef,
+        column_value_decoder_options: ColumnValueDecoderOptions,
     ) -> Result<Self> {
         let parquet_schema = metadata.file_metadata().schema_descr();
         let field_levels = parquet_to_arrow_field_levels(
@@ -591,6 +661,7 @@ impl ArrowReaderMetadata {
             metadata,
             schema: supplied_schema,
             fields: field_levels.levels.map(Arc::new),
+            column_value_decoder_options,
         })
     }
 
@@ -607,6 +678,13 @@ impl ArrowReaderMetadata {
     /// Returns the arrow [`SchemaRef`] for this parquet file
     pub fn schema(&self) -> &SchemaRef {
         &self.schema
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Returns the options used to decode column values
+    pub fn column_value_decoder_options(&self) -> &ColumnValueDecoderOptions {
+        &self.column_value_decoder_options
     }
 }
 
@@ -767,6 +845,8 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
         Ok(Some(Sbbf::new(&bitset)))
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Build a [`ParquetRecordBatchReader`]
     ///
     /// Note: this will eagerly evaluate any `RowFilter` before returning
@@ -797,15 +877,21 @@ impl<T: ChunkReader + 'static> ParquetRecordBatchReaderBuilder<T> {
                     break;
                 }
 
-                let array_reader = ArrayReaderBuilder::new(&reader)
-                    .build_array_reader(self.fields.as_deref(), predicate.projection())?;
+                let array_reader = ArrayReaderBuilder::new(&reader).build_array_reader(
+                    self.fields.as_deref(),
+                    predicate.projection(),
+                    self.column_value_decoder_options.clone(),
+                )?;
 
                 plan_builder = plan_builder.with_predicate(array_reader, predicate.as_mut())?;
             }
         }
 
-        let array_reader = ArrayReaderBuilder::new(&reader)
-            .build_array_reader(self.fields.as_deref(), &self.projection)?;
+        let array_reader = ArrayReaderBuilder::new(&reader).build_array_reader(
+            self.fields.as_deref(),
+            &self.projection,
+            self.column_value_decoder_options,
+        )?;
 
         let read_plan = plan_builder
             .limited(reader.num_rows())
@@ -995,6 +1081,8 @@ impl ParquetRecordBatchReader {
             .build()
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Create a new [`ParquetRecordBatchReader`] from the provided [`RowGroups`]
     ///
     /// Note: this is a low-level interface see [`ParquetRecordBatchReader::try_new`] for a
@@ -1004,9 +1092,13 @@ impl ParquetRecordBatchReader {
         row_groups: &dyn RowGroups,
         batch_size: usize,
         selection: Option<RowSelection>,
+        options: ArrowReaderOptions,
     ) -> Result<Self> {
-        let array_reader = ArrayReaderBuilder::new(row_groups)
-            .build_array_reader(levels.levels.as_ref(), &ProjectionMask::all())?;
+        let array_reader = ArrayReaderBuilder::new(row_groups).build_array_reader(
+            levels.levels.as_ref(),
+            &ProjectionMask::all(),
+            options.column_value_decoder_options,
+        )?;
 
         let read_plan = ReadPlanBuilder::new(batch_size)
             .with_selection(selection)
@@ -1089,6 +1181,13 @@ mod tests {
     use crate::schema::parser::parse_message_type;
     use crate::schema::types::{Type, TypePtr};
     use crate::util::test_common::rand_gen::RandGen;
+
+    // THESE IMPORTS ARE ARAS ONLY
+    use crate::arrow::arrow_reader::ArrowReaderMetadata;
+    use crate::arrow::decoder::DefaultValueForInvalidUtf8;
+    use crate::arrow::ColumnValueDecoderOptions;
+
+    use arrow_data::UnsafeFlag;
 
     #[test]
     fn test_arrow_reader_all_columns() {
@@ -3708,8 +3807,9 @@ mod tests {
         );
     }
 
+    /// THIS TEST IS COMMON, MODIFIED BY ARAS
     #[test]
-    #[should_panic(expected = "Invalid UTF8 sequence at")]
+    #[should_panic(expected = "encountered non UTF-8 data")]
     fn test_read_non_utf8_binary_as_utf8() {
         let file = write_parquet_from_iter(vec![(
             "non_utf8_binary",
@@ -3733,7 +3833,7 @@ mod tests {
         .expect("reader builder with schema")
         .build()
         .expect("reader with schema");
-        arrow_reader.next().unwrap().unwrap_err();
+        arrow_reader.next().unwrap().unwrap();
     }
 
     #[test]
@@ -4833,5 +4933,287 @@ mod tests {
             .unwrap();
         assert!(sbbf.check(&"Hello"));
         assert!(!sbbf.check(&"Hello_Not_Exists"));
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with skip validation
+    #[tokio::test]
+    async fn test_utf8_skip_validation_valid_data() {
+        let mut flag = UnsafeFlag::new();
+        unsafe { flag.set(true) };
+
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            flag, // Skip validation
+            DefaultValueForInvalidUtf8::None,
+            vec![Some("hello"), Some("world"), Some("test")],
+            "skip_validation_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with None (error) on invalid
+    #[tokio::test]
+    async fn test_utf8_none_on_invalid_valid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::None,
+            vec![Some("hello"), Some("world"), Some("test")],
+            "none_on_invalid_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with Null replacement
+    #[tokio::test]
+    async fn test_utf8_null_replacement_valid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Null,
+            vec![Some("hello"), Some("world"), Some("test")],
+            "null_replacement_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with predefined replacement
+    #[tokio::test]
+    async fn test_utf8_default_replacement_valid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Default("REPLACED".to_string()),
+            vec![Some("hello"), Some("world"), Some("test")],
+            "default_replacement_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with skip validation
+    #[tokio::test]
+    #[should_panic]
+    async fn test_utf8_skip_validation_invalid_data() {
+        let mut flag = UnsafeFlag::new();
+        unsafe { flag.set(true) };
+
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            flag, // Skip validation
+            DefaultValueForInvalidUtf8::None,
+            vec![Some("hello"), Some("\u{fffd}\u{fffd}"), Some("world")], // May show as replacement chars
+            "skip_validation_invalid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with None (should error)
+    #[tokio::test]
+    #[should_panic(expected = "invalid utf-8 sequence")]
+    async fn test_utf8_none_on_invalid_invalid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::None,
+            vec![], // Won't reach here, should panic
+            "none_on_invalid_invalid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with Null replacement
+    #[tokio::test]
+    async fn test_utf8_null_replacement_invalid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Null,
+            vec![Some("hello"), None, Some("world")],
+            "null_replacement_invalid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with predefined replacement
+    #[tokio::test]
+    async fn test_utf8_default_replacement_invalid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Default("REPLACED".to_string()),
+            vec![Some("hello"), Some("REPLACED"), Some("world")],
+            "default_replacement_invalid",
+        )
+        .await;
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Helper function for UTF-8 handling tests
+    async fn test_utf8_handling(
+        raw_data: Vec<Option<Vec<u8>>>,
+        skip_validation: UnsafeFlag,
+        default_value: DefaultValueForInvalidUtf8,
+        expected: Vec<Option<&str>>,
+        test_name: &str,
+    ) {
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "item",
+            arrow_schema::DataType::Binary,
+            true,
+        )]));
+
+        let binary_array = Arc::new(BinaryArray::from(
+            raw_data.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
+        ));
+        let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
+
+        // Test both sparse (dictionary enabled) and dense (plain encoding) cases
+        let writer_configs = vec![
+            (
+                "sparse_dict",
+                WriterProperties::builder()
+                    .set_dictionary_enabled(true)
+                    .build(),
+            ),
+            (
+                "dense_plain",
+                WriterProperties::builder()
+                    .set_dictionary_enabled(false)
+                    .build(),
+            ),
+        ];
+
+        for (config_name, props) in writer_configs {
+            let mut file = tempfile().unwrap();
+            let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), Some(props)).unwrap();
+            writer.write(&batch).unwrap();
+            writer.close().unwrap();
+
+            let projected_schema = Arc::new(Schema::new(vec![Field::new(
+                "item",
+                arrow_schema::DataType::Utf8,
+                true,
+            )]));
+
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema.clone())
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    skip_validation.clone(),
+                    default_value.clone(),
+                ));
+
+            let metadata = match ArrowReaderMetadata::load(&file, opts.clone()) {
+                Ok(m) => m,
+                Err(e) => {
+                    if e.to_string().contains("invalid utf-8 sequence") {
+                        panic!("invalid utf-8 sequence"); // For should_panic test
+                    }
+                    panic!("Unexpected error: {e}");
+                }
+            };
+
+            let builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
+                file.try_clone().unwrap(),
+                metadata,
+            )
+            .with_column_value_decoder_options(opts.column_value_decoder_options);
+
+            let mut reader = builder.build().unwrap();
+            let batch = match reader.next() {
+                Some(Ok(b)) => b,
+                Some(Err(e)) => {
+                    if e.to_string().contains("invalid utf-8 sequence") {
+                        panic!("invalid utf-8 sequence"); // For should_panic test
+                    }
+                    panic!("Unexpected error: {e}");
+                }
+                None => panic!("No batch returned"),
+            };
+
+            let arr = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            assert_eq!(
+                arr.len(),
+                expected.len(),
+                "Array length mismatch for {test_name} with {config_name}",
+            );
+
+            for (i, expected_val) in expected.iter().enumerate() {
+                match expected_val {
+                    Some(expected_str) => {
+                        // For skip validation with invalid data, we might get replacement characters
+                        if skip_validation.get() && test_name.contains("invalid") {
+                            // Just check it doesn't panic and has some value
+                            assert!(!arr.is_null(i));
+                        } else {
+                            assert_eq!(
+                                arr.value(i),
+                                *expected_str,
+                                "Mismatch at index {i} for {test_name} with {config_name}",
+                            );
+                        }
+                    }
+                    None => {
+                        assert!(
+                            arr.is_null(i),
+                            "Expected null at index {i} for {test_name} with {config_name}",
+                        );
+                    }
+                }
+            }
+        }
     }
 }

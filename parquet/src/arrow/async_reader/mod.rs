@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -65,6 +72,9 @@ use crate::arrow::arrow_reader::ReadPlanBuilder;
 use crate::arrow::schema::ParquetField;
 #[cfg(feature = "object_store")]
 pub use store::*;
+
+// THESE IMPORTS ARE ARAS ONLY
+use super::decoder::ColumnValueDecoderOptions;
 
 /// The asynchronous interface used by [`ParquetRecordBatchStream`] to read parquet files
 ///
@@ -479,6 +489,8 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
         Ok(Some(Sbbf::new(&bitset)))
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Build a new [`ParquetRecordBatchStream`]
     ///
     /// See examples on [`ParquetRecordBatchStreamBuilder::new`]
@@ -504,6 +516,7 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
             .batch_size
             .min(self.metadata.file_metadata().num_rows() as usize);
         let reader_factory = ReaderFactory {
+            column_value_decoder_options: self.column_value_decoder_options,
             input: self.input.0,
             filter: self.filter,
             metadata: self.metadata.clone(),
@@ -542,6 +555,8 @@ impl<T: AsyncFileReader + Send + 'static> ParquetRecordBatchStreamBuilder<T> {
 /// offset), returns `None` for the reader.
 type ReadResult<T> = Result<(ReaderFactory<T>, Option<ParquetRecordBatchReader>)>;
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
+///
 /// [`ReaderFactory`] is used by [`ParquetRecordBatchStream`] to create
 /// [`ParquetRecordBatchReader`]
 struct ReaderFactory<T> {
@@ -560,12 +575,17 @@ struct ReaderFactory<T> {
 
     /// Offset to apply to the next
     offset: Option<usize>,
+
+    /// THIS MEMBER IS ARAS ONLY
+    column_value_decoder_options: ColumnValueDecoderOptions,
 }
 
 impl<T> ReaderFactory<T>
 where
     T: AsyncFileReader + Send,
 {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    ///
     /// Reads the next row group with the provided `selection`, `projection` and `batch_size`
     ///
     /// Updates the `limit` and `offset` of the reader factory
@@ -613,8 +633,11 @@ where
                     .fetch(&mut self.input, predicate.projection(), selection)
                     .await?;
 
-                let array_reader = ArrayReaderBuilder::new(&row_group)
-                    .build_array_reader(self.fields.as_deref(), predicate.projection())?;
+                let array_reader = ArrayReaderBuilder::new(&row_group).build_array_reader(
+                    self.fields.as_deref(),
+                    predicate.projection(),
+                    self.column_value_decoder_options.clone(),
+                )?;
 
                 plan_builder = plan_builder.with_predicate(array_reader, predicate.as_mut())?;
             }
@@ -661,8 +684,11 @@ where
 
         let plan = plan_builder.build();
 
-        let array_reader = ArrayReaderBuilder::new(&row_group)
-            .build_array_reader(self.fields.as_deref(), &projection)?;
+        let array_reader = ArrayReaderBuilder::new(&row_group).build_array_reader(
+            self.fields.as_deref(),
+            &projection,
+            self.column_value_decoder_options.clone(),
+        )?;
 
         let reader = ParquetRecordBatchReader::new(array_reader, plan);
 
@@ -1129,6 +1155,12 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use tempfile::tempfile;
+
+    // THESE IMPORTS ARE ARAS ONLY
+    use crate::arrow::decoder::DefaultValueForInvalidUtf8;
+
+    use arrow_array::BinaryArray;
+    use arrow_data::UnsafeFlag;
 
     #[derive(Clone)]
     struct TestReader {
@@ -1832,6 +1864,7 @@ mod tests {
         assert_eq!(total_rows, 730);
     }
 
+    // THIS TEST IS COMMON, MODIFIED BY ARAS
     #[tokio::test]
     async fn test_in_memory_row_group_sparse() {
         let testdata = arrow::util::test_util::parquet_test_data();
@@ -1883,6 +1916,7 @@ mod tests {
             filter: None,
             limit: None,
             offset: None,
+            column_value_decoder_options: ColumnValueDecoderOptions::default(),
         };
 
         let mut skip = true;
@@ -2385,5 +2419,217 @@ mod tests {
         // Panics here
         let result = reader.try_collect::<Vec<_>>().await.unwrap();
         assert_eq!(result.len(), 1);
+    }
+
+    /// THIS FUNCTION IS ARAS ONLY
+    ///
+    /// Helper to create test files with controlled data
+    async fn create_test_file_with_utf8_data(
+        data: Vec<Option<Vec<u8>>>,
+        dict_enabled: bool,
+    ) -> tokio::fs::File {
+        let mut file = tempfile::tempfile().unwrap();
+        let schema = Arc::new(Schema::new(vec![Field::new(
+            "item",
+            DataType::Binary,
+            true,
+        )]));
+
+        let binary_array = Arc::new(BinaryArray::from(
+            data.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
+        ));
+        let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
+
+        let props = WriterProperties::builder()
+            .set_dictionary_enabled(dict_enabled)
+            .build();
+
+        let mut writer = ArrowWriter::try_new(&mut file, schema, Some(props)).unwrap();
+        writer.write(&batch).unwrap();
+        writer.close().unwrap();
+
+        tokio::fs::File::from_std(file)
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test skip validation with invalid UTF-8 data
+    #[tokio::test]
+    #[should_panic]
+    async fn test_skip_validation_with_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+        ];
+
+        // Test both dictionary and plain encoding
+        for dict_enabled in [true, false] {
+            let mut file = create_test_file_with_utf8_data(data.clone(), dict_enabled).await;
+
+            let mut skip_validation = UnsafeFlag::new();
+            unsafe {
+                skip_validation.set(true);
+            }
+
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
+
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    skip_validation,
+                    DefaultValueForInvalidUtf8::None,
+                ));
+
+            // This should fail when creating StringArray from invalid UTF-8
+            let result = ArrowReaderMetadata::load_async(&mut file, opts).await;
+            // Or it might fail during reading
+            if let Ok(meta) = result {
+                let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                    file.try_clone().await.unwrap(),
+                    meta,
+                )
+                .build()
+                .unwrap();
+
+                // Should panic or error when arrow tries to create StringArray
+                let _ = stream.next().await;
+            }
+        }
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test None behavior (should error on invalid UTF-8)
+    #[tokio::test]
+    async fn test_none_on_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+        ];
+
+        for dict_enabled in [true, false] {
+            let mut file = create_test_file_with_utf8_data(data.clone(), dict_enabled).await;
+
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
+
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    UnsafeFlag::new(),
+                    DefaultValueForInvalidUtf8::None,
+                ));
+
+            let meta = ArrowReaderMetadata::load_async(&mut file, opts)
+                .await
+                .unwrap();
+            let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                file.try_clone().await.unwrap(),
+                meta,
+            )
+            .build()
+            .unwrap();
+
+            // Should error with "invalid utf-8 sequence"
+            let result = stream.next().await.unwrap();
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("invalid utf-8 sequence"));
+        }
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test null replacement on invalid UTF-8
+    #[tokio::test]
+    async fn test_null_replacement_on_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+            None, // Already null
+        ];
+
+        for dict_enabled in [true, false] {
+            let mut file = create_test_file_with_utf8_data(data.clone(), dict_enabled).await;
+
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
+
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    UnsafeFlag::new(),
+                    DefaultValueForInvalidUtf8::Null,
+                ));
+
+            let meta = ArrowReaderMetadata::load_async(&mut file, opts)
+                .await
+                .unwrap();
+            let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                file.try_clone().await.unwrap(),
+                meta,
+            )
+            .build()
+            .unwrap();
+
+            let batch = stream.next().await.unwrap().unwrap();
+            let arr = batch.column(0).as_string::<i32>();
+
+            assert_eq!(arr.len(), 4);
+            assert_eq!(arr.value(0), "hello");
+            assert!(arr.is_null(1)); // Invalid UTF-8 replaced with null
+            assert_eq!(arr.value(2), "world");
+            assert!(arr.is_null(3)); // Original null
+        }
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test default string replacement on invalid UTF-8
+    #[tokio::test]
+    async fn test_default_replacement_on_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+        ];
+
+        for dict_enabled in [true, false] {
+            let mut file = create_test_file_with_utf8_data(data.clone(), dict_enabled).await;
+
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
+
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    UnsafeFlag::new(),
+                    DefaultValueForInvalidUtf8::Default("INVALID".to_string()),
+                ));
+
+            let meta = ArrowReaderMetadata::load_async(&mut file, opts)
+                .await
+                .unwrap();
+            let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                file.try_clone().await.unwrap(),
+                meta,
+            )
+            .build()
+            .unwrap();
+
+            let batch = stream.next().await.unwrap().unwrap();
+            let arr = batch.column(0).as_string::<i32>();
+
+            assert_eq!(arr.len(), 3);
+            assert_eq!(arr.value(0), "hello");
+            assert_eq!(arr.value(1), "INVALID"); // Replaced
+            assert_eq!(arr.value(2), "world");
+        }
     }
 }
