@@ -1157,11 +1157,11 @@ mod tests {
     use tempfile::tempfile;
 
     // THESE IMPORTS ARE ARAS ONLY
-    use std::io::{Read, Seek, Write};
+    use std::io::{Read, Write};
 
     use crate::arrow::decoder::DefaultValueForInvalidUtf8;
 
-    use arrow_array::{DictionaryArray, StringViewArray};
+    use arrow_array::BinaryArray;
     use arrow_data::UnsafeFlag;
 
     #[derive(Clone)]
@@ -2423,413 +2423,220 @@ mod tests {
         assert_eq!(result.len(), 1);
     }
 
-    /// THIS TEST IS ARAS ONLY
-    #[tokio::test]
-    async fn test_skip_utf8_validation() {
-        let mut file = tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                "hello_datafusion✨",
-                "datafusion-arrow🎷",
-                "c",
-            ]))],
-        )
-        .unwrap();
-        writer.write(&batch).unwrap();
-        writer.close().unwrap();
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
-
-        let mut skip_validation = UnsafeFlag::new();
-        unsafe {
-            skip_validation.set(true);
-        }
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, DefaultValueForInvalidUtf8::None),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r.column(0).as_string::<i32>();
-        assert_eq!(arr.value(0), "hello_datafusion✨");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
-    }
-
-    /// THIS TEST IS ARAS ONLY
-    #[tokio::test]
-    async fn test_skip_utf8view_validation() {
-        let mut file = tempfile().unwrap();
+    /// THIS FUNCTION IS ARAS ONLY
+    ///
+    /// Helper to create test files with controlled data
+    async fn create_test_file_with_utf8_data(
+        data: Vec<Option<Vec<u8>>>,
+        data_type: DataType,
+        dict_enabled: bool,
+    ) -> tokio::fs::File {
+        let mut file = tempfile::tempfile().unwrap();
         let schema = Arc::new(Schema::new(vec![Field::new(
             "item",
-            DataType::Utf8View,
-            false,
+            DataType::Binary,
+            true,
         )]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringViewArray::from(vec![
-                "hello_datafusion✨",
-                "datafusion-arrow🎷",
-                "c",
-            ]))],
-        )
-        .unwrap();
+
+        let binary_array = Arc::new(BinaryArray::from(
+            data.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
+        ));
+        let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
+
+        let props = WriterProperties::builder()
+            .set_dictionary_enabled(dict_enabled)
+            .build();
+
+        let mut writer = ArrowWriter::try_new(&mut file, schema, Some(props)).unwrap();
         writer.write(&batch).unwrap();
         writer.close().unwrap();
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
 
-        let mut skip_validation = UnsafeFlag::new();
-        unsafe {
-            skip_validation.set(true);
+        tokio::fs::File::from_std(file)
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test skip validation with invalid UTF-8 data
+    #[tokio::test]
+    #[should_panic]
+    async fn test_skip_validation_with_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+        ];
+
+        // Test both dictionary and plain encoding
+        for dict_enabled in [true, false] {
+            let mut file =
+                create_test_file_with_utf8_data(data.clone(), DataType::Utf8, dict_enabled).await;
+
+            let mut skip_validation = UnsafeFlag::new();
+            unsafe {
+                skip_validation.set(true);
+            }
+
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
+
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    skip_validation,
+                    DefaultValueForInvalidUtf8::None,
+                ));
+
+            // This should fail when creating StringArray from invalid UTF-8
+            let result = ArrowReaderMetadata::load_async(&mut file, opts).await;
+            // Or it might fail during reading
+            if let Ok(meta) = result {
+                let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                    file.try_clone().await.unwrap(),
+                    meta,
+                )
+                .build()
+                .unwrap();
+
+                // Should panic or error when arrow tries to create StringArray
+                let _ = stream.next().await;
+            }
         }
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, DefaultValueForInvalidUtf8::None),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r.column(0).as_string_view();
-        assert_eq!(arr.value(0), "hello_datafusion✨");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
     }
 
     /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test None behavior (should error on invalid UTF-8)
     #[tokio::test]
-    async fn test_skip_utf8_dict_validation() {
-        let mut file = tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new(
-            "item",
-            DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
-            false,
-        )]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
+    async fn test_none_on_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+        ];
 
-        let values =
-            StringArray::from_iter_values(["hello_datafusion✨", "datafusion-arrow🎷", "c"]);
-        let keys = Int32Array::from_iter_values([0, 0, 1, 2]);
-        let array = DictionaryArray::<Int32Type>::try_new(keys, Arc::new(values)).unwrap();
+        for dict_enabled in [true, false] {
+            let mut file =
+                create_test_file_with_utf8_data(data.clone(), DataType::Utf8, dict_enabled).await;
 
-        let batch = RecordBatch::try_new(schema, vec![Arc::new(array)]).unwrap();
-        writer.write(&batch).unwrap();
-        writer.close().unwrap();
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
 
-        let mut skip_validation = UnsafeFlag::new();
-        unsafe {
-            skip_validation.set(true);
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    UnsafeFlag::new(),
+                    DefaultValueForInvalidUtf8::None,
+                ));
+
+            let meta = ArrowReaderMetadata::load_async(&mut file, opts)
+                .await
+                .unwrap();
+            let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                file.try_clone().await.unwrap(),
+                meta,
+            )
+            .build()
+            .unwrap();
+
+            // Should error with "invalid utf-8 sequence"
+            let result = stream.next().await.unwrap();
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("invalid utf-8 sequence"));
         }
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, DefaultValueForInvalidUtf8::None),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r
-            .column(0)
-            .as_dictionary::<Int32Type>()
-            .values()
-            .as_string::<i32>();
-        assert_eq!(arr.value(0), "hello_datafusion✨");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
     }
 
     /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test null replacement on invalid UTF-8
     #[tokio::test]
-    async fn test_utf8_validation_with_default_1() {
-        let mut file = tempfile::tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                "hello_datafusion✨",
-                "datafusion-arrow🎷",
-                "c",
-            ]))],
-        )
-        .unwrap();
-        writer.write(&batch).unwrap();
-        let _meta = writer.close().unwrap();
+    async fn test_null_replacement_on_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+            None, // Already null
+        ];
 
-        file.seek(SeekFrom::Start(0)).unwrap();
+        for dict_enabled in [true, false] {
+            let mut file =
+                create_test_file_with_utf8_data(data.clone(), DataType::Utf8, dict_enabled).await;
 
-        let mut buf = Vec::new();
-        let _ = file.read_to_end(&mut buf).unwrap();
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
 
-        buf[22] = 0xf0;
-        buf[23] = 0x28;
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    UnsafeFlag::new(),
+                    DefaultValueForInvalidUtf8::Null,
+                ));
 
-        file.seek(SeekFrom::Start(0)).unwrap();
-        file.write_all(&buf).unwrap();
+            let meta = ArrowReaderMetadata::load_async(&mut file, opts)
+                .await
+                .unwrap();
+            let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                file.try_clone().await.unwrap(),
+                meta,
+            )
+            .build()
+            .unwrap();
 
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
+            let batch = stream.next().await.unwrap().unwrap();
+            let arr = batch.column(0).as_string::<i32>();
 
-        let skip_validation = UnsafeFlag::new();
-
-        let default_value = DefaultValueForInvalidUtf8::Default("default_value".into());
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, default_value),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r.column(0).as_string::<i32>();
-        assert_eq!(arr.value(0), "default_value");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
+            assert_eq!(arr.len(), 4);
+            assert_eq!(arr.value(0), "hello");
+            assert!(arr.is_null(1)); // Invalid UTF-8 replaced with null
+            assert_eq!(arr.value(2), "world");
+            assert!(arr.is_null(3)); // Original null
+        }
     }
 
     /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test default string replacement on invalid UTF-8
     #[tokio::test]
-    async fn test_utf8_validation_with_default_2() {
-        // first byte is smaller than -0x40
-        let mut file = tempfile::tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, false)]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                "hello_datafusion✨",
-                "datafusion-arrow🎷",
-                "c",
-            ]))],
-        )
-        .unwrap();
-        writer.write(&batch).unwrap();
-        let _meta = writer.close().unwrap();
+    async fn test_default_replacement_on_invalid_utf8() {
+        let data = vec![
+            Some(b"hello".to_vec()),
+            Some(vec![0xff, 0xfe]), // Invalid UTF-8
+            Some(b"world".to_vec()),
+        ];
 
-        file.seek(SeekFrom::Start(0)).unwrap();
+        for dict_enabled in [true, false] {
+            let mut file =
+                create_test_file_with_utf8_data(data.clone(), DataType::Utf8, dict_enabled).await;
 
-        let mut buf = Vec::new();
-        let _n = file.read_to_end(&mut buf).unwrap();
+            let projected_schema =
+                Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
 
-        buf[22] = 0xa0;
-        buf[23] = 0x28;
+            let opts = ArrowReaderOptions::new()
+                .with_schema(projected_schema)
+                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
+                    UnsafeFlag::new(),
+                    DefaultValueForInvalidUtf8::Default("INVALID".to_string()),
+                ));
 
-        file.seek(SeekFrom::Start(0)).unwrap();
-        file.write_all(&buf).unwrap();
+            let meta = ArrowReaderMetadata::load_async(&mut file, opts)
+                .await
+                .unwrap();
+            let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+                file.try_clone().await.unwrap(),
+                meta,
+            )
+            .build()
+            .unwrap();
 
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
+            let batch = stream.next().await.unwrap().unwrap();
+            let arr = batch.column(0).as_string::<i32>();
 
-        let skip_validation = UnsafeFlag::new();
-
-        let default_value = DefaultValueForInvalidUtf8::Default("default_value".into());
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, default_value),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r.column(0).as_string::<i32>();
-        assert_eq!(arr.value(0), "default_value");
-        assert_eq!(arr.value(1), "datafusion-arrow🎷");
-        assert_eq!(arr.value(2), "c");
-    }
-
-    /// THIS TEST IS ARAS ONLY
-    #[tokio::test]
-    async fn test_utf8_validation_with_default_null() {
-        let mut file = tempfile::tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                Some("hello_datafusion✨"),
-                None,
-                Some("datafusion-arrow🎷"),
-                Some("c"),
-            ]))],
-        )
-        .unwrap();
-        writer.write(&batch).unwrap();
-        let _meta = writer.close().unwrap();
-
-        file.seek(SeekFrom::Start(0)).unwrap();
-
-        let mut buf = Vec::new();
-        let _ = file.read_to_end(&mut buf).unwrap();
-
-        buf[22] = 0xf0;
-        buf[23] = 0x28;
-
-        file.seek(SeekFrom::Start(0)).unwrap();
-        file.write_all(&buf).unwrap();
-
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
-
-        let skip_validation = UnsafeFlag::new();
-
-        let default_value = DefaultValueForInvalidUtf8::Null;
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, default_value),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r.column(0).as_string::<i32>();
-
-        assert!(arr.is_null(0));
-        assert!(arr.is_null(1));
-        assert_eq!(arr.value(2), "datafusion-arrow🎷");
-        assert_eq!(arr.value(3), "c");
-    }
-
-    /// THIS TEST IS ARAS ONLY
-    #[tokio::test]
-    async fn test_utf8_validation_with_default_null_n100() {
-        let mut file = tempfile::tempfile().unwrap();
-        let schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
-        let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), None).unwrap();
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![Arc::new(StringArray::from(vec![
-                Some("hello_datafusion✨"),
-                None,
-                Some("datafusion-arrow🎷"),
-                Some("c"),
-            ]))],
-        )
-        .unwrap();
-        writer.write(&batch).unwrap();
-        let _meta = writer.close().unwrap();
-
-        file.seek(SeekFrom::Start(0)).unwrap();
-
-        let mut buf = Vec::new();
-        let _ = file.read_to_end(&mut buf).unwrap();
-
-        buf[22] = 0xf0;
-        buf[23] = 0x28;
-
-        file.seek(SeekFrom::Start(0)).unwrap();
-        file.write_all(&buf).unwrap();
-
-        // open file with parquet data
-        let mut file = tokio::fs::File::from_std(file);
-
-        let skip_validation = UnsafeFlag::new();
-
-        let default_value = DefaultValueForInvalidUtf8::Null;
-
-        // load metadata once
-        let meta = ArrowReaderMetadata::load_async(
-            &mut file,
-            ArrowReaderOptions::new().with_column_value_decoder_options(
-                ColumnValueDecoderOptions::new(skip_validation, default_value),
-            ),
-        )
-        .await
-        .unwrap();
-        // create two readers, a and b, from the same underlying file
-        // without reading the metadata again
-        let mut a = ParquetRecordBatchStreamBuilder::new_with_metadata(
-            file.try_clone().await.unwrap(),
-            meta.clone(),
-        )
-        .build()
-        .unwrap();
-        let r = a.next().await.unwrap().unwrap();
-
-        let arr = r.column(0).as_string::<i32>();
-
-        assert!(arr.is_null(0));
-        assert!(arr.is_null(1));
-        assert_eq!(arr.value(2), "datafusion-arrow🎷");
-        assert_eq!(arr.value(3), "c");
+            assert_eq!(arr.len(), 3);
+            assert_eq!(arr.value(0), "hello");
+            assert_eq!(arr.value(1), "INVALID"); // Replaced
+            assert_eq!(arr.value(2), "world");
+        }
     }
 }
