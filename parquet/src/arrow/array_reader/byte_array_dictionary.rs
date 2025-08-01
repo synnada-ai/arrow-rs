@@ -374,7 +374,7 @@ where
     fn read(&mut self, out: &mut Self::Buffer, num_values: usize) -> Result<usize> {
         match self.decoder.as_mut().expect("decoder set") {
             MaybeDictionaryDecoder::Fallback(decoder) => {
-                let is_null_mask = decoder.read(out.spill_values()?, num_values, None, None)?;
+                let is_null_mask = decoder.read(out.spill_values()?, num_values, None, None, false)?;
                 Ok(is_null_mask.len())
             }
             MaybeDictionaryDecoder::Dict {
@@ -440,7 +440,7 @@ where
     ) -> Result<Vec<bool>> {
         match self.decoder.as_mut().expect("decoder set") {
             MaybeDictionaryDecoder::Fallback(decoder) => {
-                decoder.read(out.spill_values()?, num_values, None, None)
+                decoder.read(out.spill_values()?, num_values, None, None, false)
             }
             MaybeDictionaryDecoder::Dict {
                 decoder,

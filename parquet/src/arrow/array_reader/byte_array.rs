@@ -193,6 +193,8 @@ struct ByteArrayColumnValueDecoder<I: OffsetSizeTrait> {
     non_null_mask: Option<Vec<bool>>,
     // THIS MEMBER IS ARAS ONLY
     default_value: DefaultValueForInvalidUtf8,
+    // THIS MEMBER IS ARAS ONLY
+    dict_is_sparse: bool,
 }
 
 impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
@@ -207,6 +209,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
             validate_utf8,
             non_null_mask: None,
             default_value: DefaultValueForInvalidUtf8::default(),
+            dict_is_sparse: false,
         }
     }
 
@@ -225,6 +228,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
             decoder: None,
             validate_utf8,
             default_value: options.default_value,
+            dict_is_sparse: false,
         }
     }
 
@@ -256,6 +260,9 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
         );
         let non_null_mask = decoder.read(&mut buffer, usize::MAX)?;
 
+        let dict_is_sparse = non_null_mask.iter().any(|&x| !x);
+
+        self.dict_is_sparse = dict_is_sparse;
         self.dict = Some(buffer);
         self.non_null_mask = Some(non_null_mask);
         Ok(())
@@ -292,6 +299,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
             num_values,
             self.dict.as_ref(),
             self.non_null_mask.as_ref(),
+            self.dict_is_sparse
         )?;
         Ok(non_null_mask.len())
     }
@@ -312,6 +320,7 @@ impl<I: OffsetSizeTrait> ColumnValueDecoder for ByteArrayColumnValueDecoder<I> {
             num_values,
             self.dict.as_ref(),
             self.non_null_mask.as_ref(),
+            self.dict_is_sparse
         )
     }
 
@@ -380,6 +389,7 @@ impl ByteArrayDecoder {
         len: usize,
         dict: Option<&OffsetBuffer<I>>,
         non_null_mask: Option<&Vec<bool>>,
+        dict_is_sparse: bool,
     ) -> Result<Vec<bool>> {
         match self {
             ByteArrayDecoder::Plain(d) => d.read(out, len),
@@ -390,7 +400,7 @@ impl ByteArrayDecoder {
                 let non_null_mask = non_null_mask
                     .ok_or_else(|| general_err!("missing non-null mask for column"))?;
 
-                d.read(out, dict, len, non_null_mask)
+                d.read(out, dict, len, non_null_mask, dict_is_sparse)
             }
             ByteArrayDecoder::DeltaLength(d) => {
                 let len = d.read(out, len)?;
@@ -681,6 +691,7 @@ impl ByteArrayDecoderDictionary {
         dict: &OffsetBuffer<I>,
         len: usize,
         non_null_mask: &Vec<bool>,
+        dict_is_sparse: bool
     ) -> Result<Vec<bool>> {
         // All data must be NULL
         if dict.is_empty() {
@@ -693,6 +704,7 @@ impl ByteArrayDecoderDictionary {
                 dict.offsets.as_slice(),
                 dict.values.as_slice(),
                 non_null_mask.as_slice(),
+                dict_is_sparse
             )
         })
     }

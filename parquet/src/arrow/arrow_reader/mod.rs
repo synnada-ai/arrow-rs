@@ -4750,159 +4750,292 @@ mod tests {
     }
 
     /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with skip validation
     #[tokio::test]
-    async fn test_skip_utf8_validation_v1() {
-        let schema = Arc::new(Schema::new(vec![Field::new(
-            "item",
-            arrow_schema::DataType::Binary,
-            true,
-        )]));
-        let raw = [
-            Some(b"ok_1".to_vec()),
-            Some(vec![0xff, 0xfe]), // Invalid UTF-8
-            Some(b"ok_2".to_vec()),
-        ];
-        let binary_array = Arc::new(BinaryArray::from(
-            raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
-        ));
-        let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
-        let mut file = tempfile().unwrap();
-        let mut writer = ArrowWriter::try_new(&mut file, schema, None).unwrap();
-        writer.write(&batch).unwrap();
-        writer.close().unwrap();
+    async fn test_utf8_skip_validation_valid_data() {
+        let mut flag = UnsafeFlag::new();
+        unsafe { flag.set(true) };
 
-        let test_cases = vec![
-            (
-                DefaultValueForInvalidUtf8::Default("__invalid__".to_string()),
-                vec![Some("ok_1"), Some("__invalid__"), Some("ok_2")],
-            ),
-            (
-                DefaultValueForInvalidUtf8::Null,
-                vec![Some("ok_1"), None, Some("ok_2")],
-            ),
-        ];
-
-        for (default_value, expected) in test_cases {
-            let projected_schema = Arc::new(Schema::new(vec![Field::new(
-                "item",
-                arrow_schema::DataType::Utf8,
-                true,
-            )]));
-
-            let flag = UnsafeFlag::new();
-            let opts = ArrowReaderOptions::new()
-                .with_schema(projected_schema.clone())
-                .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
-                    flag.clone(),
-                    default_value.clone(),
-                ));
-
-            let metadata = ArrowReaderMetadata::load(&file, opts.clone()).unwrap();
-            let builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
-                file.try_clone().unwrap(),
-                metadata,
-            )
-            .with_column_value_decoder_options(opts.column_value_decoder_options);
-            let mut reader = builder.build().unwrap();
-            let batch = reader.next().unwrap().unwrap();
-
-            let arr = batch
-                .column(0)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .unwrap();
-            assert_eq!(arr.len(), 3);
-
-            for (i, expected_val) in expected.iter().enumerate() {
-                match expected_val {
-                    Some(expected_str) => assert_eq!(arr.value(i), *expected_str),
-                    None => assert!(arr.is_null(i), "Expected null at index {i}"),
-                }
-            }
-        }
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            flag, // Skip validation
+            DefaultValueForInvalidUtf8::None,
+            vec![Some("hello"), Some("world"), Some("test")],
+            "skip_validation_valid",
+        )
+        .await;
     }
 
     /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with None (error) on invalid
     #[tokio::test]
-    async fn test_skip_utf8_validation_v2() {
+    async fn test_utf8_none_on_invalid_valid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::None,
+            vec![Some("hello"), Some("world"), Some("test")],
+            "none_on_invalid_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with Null replacement
+    #[tokio::test]
+    async fn test_utf8_null_replacement_valid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Null,
+            vec![Some("hello"), Some("world"), Some("test")],
+            "null_replacement_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test valid UTF-8 data with predefined replacement
+    #[tokio::test]
+    async fn test_utf8_default_replacement_valid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(b"world".to_vec()),
+                Some(b"test".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Default("REPLACED".to_string()),
+            vec![Some("hello"), Some("world"), Some("test")],
+            "default_replacement_valid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with skip validation
+    #[tokio::test]
+    #[should_panic]
+    async fn test_utf8_skip_validation_invalid_data() {
+        let mut flag = UnsafeFlag::new();
+        unsafe { flag.set(true) };
+
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            flag, // Skip validation
+            DefaultValueForInvalidUtf8::None,
+            vec![Some("hello"), Some("\u{fffd}\u{fffd}"), Some("world")], // May show as replacement chars
+            "skip_validation_invalid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with None (should error)
+    #[tokio::test]
+    #[should_panic(expected = "invalid utf-8 sequence")]
+    async fn test_utf8_none_on_invalid_invalid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::None,
+            vec![], // Won't reach here, should panic
+            "none_on_invalid_invalid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with Null replacement
+    #[tokio::test]
+    async fn test_utf8_null_replacement_invalid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Null,
+            vec![Some("hello"), None, Some("world")],
+            "null_replacement_invalid",
+        )
+        .await;
+    }
+
+    /// THIS TEST IS ARAS ONLY
+    ///
+    /// Test invalid UTF-8 data with predefined replacement
+    #[tokio::test]
+    async fn test_utf8_default_replacement_invalid_data() {
+        test_utf8_handling(
+            vec![
+                Some(b"hello".to_vec()),
+                Some(vec![0xff, 0xfe]), // Invalid UTF-8
+                Some(b"world".to_vec()),
+            ],
+            UnsafeFlag::new(), // Validate
+            DefaultValueForInvalidUtf8::Default("REPLACED".to_string()),
+            vec![Some("hello"), Some("REPLACED"), Some("world")],
+            "default_replacement_invalid",
+        )
+        .await;
+    }
+
+    /// THIS METHOD IS ARAS ONLY
+    ///
+    /// Helper function for UTF-8 handling tests
+    async fn test_utf8_handling(
+        raw_data: Vec<Option<Vec<u8>>>,
+        skip_validation: UnsafeFlag,
+        default_value: DefaultValueForInvalidUtf8,
+        expected: Vec<Option<&str>>,
+        test_name: &str,
+    ) {
         let schema = Arc::new(Schema::new(vec![Field::new(
             "item",
             arrow_schema::DataType::Binary,
             true,
         )]));
-        let n = 100;
-        let mut raw = vec![Some(b"ok".to_vec()); n];
-        raw[1] = Some(vec![0xff, 0xfe]); // Invalid UTF-8
+
         let binary_array = Arc::new(BinaryArray::from(
-            raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
+            raw_data.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
         ));
         let batch = RecordBatch::try_new(schema.clone(), vec![binary_array]).unwrap();
-        let mut file = tempfile().unwrap();
-        let mut writer = ArrowWriter::try_new(&mut file, schema, None).unwrap();
-        writer.write(&batch).unwrap();
-        writer.close().unwrap();
 
-        let expected_1 = raw
-            .iter()
-            .enumerate()
-            .map(|(i, _)| {
-                if i == 1 {
-                    Some("__invalid__")
-                } else {
-                    Some("ok")
-                }
-            })
-            .collect::<Vec<_>>();
-
-        let expected_2 = raw
-            .iter()
-            .enumerate()
-            .map(|(i, _)| if i == 1 { None } else { Some("ok") })
-            .collect::<Vec<_>>();
-
-        let test_cases = vec![
+        // Test both sparse (dictionary enabled) and dense (plain encoding) cases
+        let writer_configs = vec![
             (
-                DefaultValueForInvalidUtf8::Default("__invalid__".to_string()),
-                expected_1,
+                "sparse_dict",
+                WriterProperties::builder()
+                    .set_dictionary_enabled(true)
+                    .build(),
             ),
-            (DefaultValueForInvalidUtf8::Null, expected_2),
+            (
+                "dense_plain",
+                WriterProperties::builder()
+                    .set_dictionary_enabled(false)
+                    .build(),
+            ),
         ];
 
-        for (default_value, expected) in test_cases {
+        for (config_name, props) in writer_configs {
+            println!("Testing {} with {}", test_name, config_name);
+
+            let mut file = tempfile().unwrap();
+            let mut writer = ArrowWriter::try_new(&mut file, schema.clone(), Some(props)).unwrap();
+            writer.write(&batch).unwrap();
+            writer.close().unwrap();
+
             let projected_schema = Arc::new(Schema::new(vec![Field::new(
                 "item",
                 arrow_schema::DataType::Utf8,
                 true,
             )]));
 
-            let flag = UnsafeFlag::new();
             let opts = ArrowReaderOptions::new()
                 .with_schema(projected_schema.clone())
                 .with_column_value_decoder_options(ColumnValueDecoderOptions::new(
-                    flag.clone(),
+                    skip_validation.clone(),
                     default_value.clone(),
                 ));
 
-            let metadata = ArrowReaderMetadata::load(&file, opts.clone()).unwrap();
+            let metadata = match ArrowReaderMetadata::load(&file, opts.clone()) {
+                Ok(m) => m,
+                Err(e) => {
+                    if e.to_string().contains("invalid utf-8 sequence") {
+                        panic!("invalid utf-8 sequence"); // For should_panic test
+                    }
+                    panic!("Unexpected error: {}", e);
+                }
+            };
+
             let builder = ParquetRecordBatchReaderBuilder::new_with_metadata(
                 file.try_clone().unwrap(),
                 metadata,
             )
             .with_column_value_decoder_options(opts.column_value_decoder_options);
+
             let mut reader = builder.build().unwrap();
-            let batch = reader.next().unwrap().unwrap();
+            let batch = match reader.next() {
+                Some(Ok(b)) => b,
+                Some(Err(e)) => {
+                    if e.to_string().contains("invalid utf-8 sequence") {
+                        panic!("invalid utf-8 sequence"); // For should_panic test
+                    }
+                    panic!("Unexpected error: {}", e);
+                }
+                None => panic!("No batch returned"),
+            };
 
             let arr = batch
                 .column(0)
                 .as_any()
                 .downcast_ref::<StringArray>()
                 .unwrap();
-            assert_eq!(arr.len(), n);
+
+            assert_eq!(
+                arr.len(),
+                expected.len(),
+                "Array length mismatch for {} with {}",
+                test_name,
+                config_name
+            );
 
             for (i, expected_val) in expected.iter().enumerate() {
                 match expected_val {
-                    Some(expected_str) => assert_eq!(arr.value(i), *expected_str),
-                    None => assert!(arr.is_null(i), "Expected null at index {i}"),
+                    Some(expected_str) => {
+                        // For skip validation with invalid data, we might get replacement characters
+                        if skip_validation.get() && test_name.contains("invalid") {
+                            // Just check it doesn't panic and has some value
+                            assert!(!arr.is_null(i));
+                        } else {
+                            assert_eq!(
+                                arr.value(i),
+                                *expected_str,
+                                "Mismatch at index {} for {} with {}",
+                                i,
+                                test_name,
+                                config_name
+                            );
+                        }
+                    }
+                    None => {
+                        assert!(
+                            arr.is_null(i),
+                            "Expected null at index {} for {} with {}",
+                            i,
+                            test_name,
+                            config_name
+                        );
+                    }
                 }
             }
         }

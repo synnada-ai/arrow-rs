@@ -22,7 +22,10 @@ use std::sync::Arc;
 use arrow::array::*;
 use arrow::datatypes::*;
 use arrow_data::UnsafeFlag;
-use parquet::arrow::arrow_reader::{ArrowReaderMetadata, ArrowReaderOptions, ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder};
+use parquet::arrow::arrow_reader::{
+    ArrowReaderMetadata, ArrowReaderOptions, ParquetRecordBatchReader,
+    ParquetRecordBatchReaderBuilder,
+};
 use parquet::arrow::{ArrowWriter, ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};
 use parquet::file::properties::WriterProperties;
 
@@ -38,7 +41,9 @@ fn generate_invalid_file() -> std::fs::File {
     )]));
 
     // Create longer strings to make UTF-8 validation more expensive
-    let long_string = "Hello, World! This is a longer string to make UTF-8 validation take more time. 🎉".repeat(10);
+    let long_string =
+        "Hello, World! This is a longer string to make UTF-8 validation take more time. 🎉"
+            .repeat(10);
     let mut raw = vec![Some(long_string.as_bytes().to_vec()); N_ROWS];
     // Make approximately 1% of entries invalid UTF-8 (every 100th element)
     for i in (0..N_ROWS).step_by(100) {
@@ -53,7 +58,7 @@ fn generate_invalid_file() -> std::fs::File {
     // Create writer properties with large row group size and disable dictionary encoding
     let props = WriterProperties::builder()
         .set_max_row_group_size(N_ROWS)
-        .set_dictionary_enabled(false)  // Disable dictionary encoding
+        .set_dictionary_enabled(false) // Disable dictionary encoding
         .build();
 
     let mut file = tempfile::tempfile().unwrap();
@@ -71,7 +76,9 @@ fn generate_valid_file() -> std::fs::File {
         true,
     )]));
     // Same longer strings as invalid file for consistency
-    let long_string = "Hello, World! This is a longer string to make UTF-8 validation take more time. 🎉".repeat(10);
+    let long_string =
+        "Hello, World! This is a longer string to make UTF-8 validation take more time. 🎉"
+            .repeat(10);
     let raw = vec![Some(long_string.as_bytes().to_vec()); N_ROWS];
     let binary_array = Arc::new(BinaryArray::from(
         raw.iter().map(|x| x.as_deref()).collect::<Vec<_>>(),
@@ -81,7 +88,7 @@ fn generate_valid_file() -> std::fs::File {
     // Create writer properties with large row group size and disable dictionary encoding
     let props = WriterProperties::builder()
         .set_max_row_group_size(N_ROWS)
-        .set_dictionary_enabled(false)  // Disable dictionary encoding
+        .set_dictionary_enabled(false) // Disable dictionary encoding
         .build();
 
     let mut file = tempfile::tempfile().unwrap();
@@ -97,11 +104,7 @@ fn prepare_reader(
     default_value: DefaultValueForInvalidUtf8,
     to_skip: bool,
 ) -> ParquetRecordBatchReader {
-    let projected_schema = Arc::new(Schema::new(vec![Field::new(
-        "item",
-        DataType::Utf8,
-        true,
-    )]));
+    let projected_schema = Arc::new(Schema::new(vec![Field::new("item", DataType::Utf8, true)]));
 
     let mut flag = UnsafeFlag::new();
     if to_skip {
