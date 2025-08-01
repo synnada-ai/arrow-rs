@@ -247,6 +247,7 @@ name = "row_selector"
 harness = false
 required-features = ["arrow"]
 
+# THIS BENCH IS ARAS ONLY
 [[bench]]
 name = "invalid_utf8_read"
 harness = false

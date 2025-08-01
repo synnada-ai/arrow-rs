@@ -4816,7 +4816,7 @@ mod tests {
             for (i, expected_val) in expected.iter().enumerate() {
                 match expected_val {
                     Some(expected_str) => assert_eq!(arr.value(i), *expected_str),
-                    None => assert!(arr.is_null(i), "Expected null at index {}", i),
+                    None => assert!(arr.is_null(i), "Expected null at index {i}"),
                 }
             }
         }
@@ -4902,7 +4902,7 @@ mod tests {
             for (i, expected_val) in expected.iter().enumerate() {
                 match expected_val {
                     Some(expected_str) => assert_eq!(arr.value(i), *expected_str),
-                    None => assert!(arr.is_null(i), "Expected null at index {}", i),
+                    None => assert!(arr.is_null(i), "Expected null at index {i}"),
                 }
             }
         }
