@@ -21,7 +21,7 @@ const N_ROWS: usize = 1024;
 fn generate_invalid_file() -> (std::fs::File, Vec<Option<Vec<u8>>>) {
     let schema = Arc::new(Schema::new(vec![Field::new(
         "item",
-        arrow_schema::DataType::Binary,
+        DataType::Binary,
         true,
     )]));
 
@@ -43,7 +43,7 @@ fn generate_invalid_file() -> (std::fs::File, Vec<Option<Vec<u8>>>) {
 fn generate_valid_file() -> std::fs::File {
     let schema = Arc::new(Schema::new(vec![Field::new(
         "item",
-        arrow_schema::DataType::Binary,
+        DataType::Binary,
         true,
     )]));
     let raw = vec![Some(b"ok".to_vec()); N_ROWS];
@@ -173,7 +173,7 @@ fn validate_utf8_decoding(
 ) {
     let projected_schema = Arc::new(Schema::new(vec![Field::new(
         "item",
-        arrow_schema::DataType::Utf8,
+        DataType::Utf8,
         true,
     )]));
 
