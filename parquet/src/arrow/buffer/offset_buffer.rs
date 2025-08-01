@@ -139,7 +139,7 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
     /// For each value `key` in `keys` this will insert
     /// `&dict_values[dict_offsets[key]..dict_offsets[key+1]]`
     ///
-    /// Note: This will validate offsets are valid
+    /// Note: This will validate offsets
     pub fn extend_from_dictionary_with_non_null_mask<K: ArrowNativeType, V: ArrowNativeType>(
         &mut self,
         keys: &[K],
@@ -230,7 +230,7 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
     /// For each value `key` in `keys` this will insert
     /// `&dict_values[dict_offsets[key]..dict_offsets[key+1]]`
     ///
-    /// Note: This will validate offsets are valid
+    /// Note: This will validate offsets
     pub fn extend_from_dictionary<K: ArrowNativeType, V: ArrowNativeType>(
         &mut self,
         keys: &[K],
