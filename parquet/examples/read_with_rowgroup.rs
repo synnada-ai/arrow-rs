@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -28,6 +35,12 @@ use parquet::file::serialized_reader::SerializedPageReader;
 use std::sync::Arc;
 use tokio::fs::File;
 
+// THESE IMPORTS ARE ARAS ONLY:
+use arrow_data::UnsafeFlag;
+use parquet::arrow::arrow_reader::ArrowReaderOptions;
+use parquet::arrow::{ColumnValueDecoderOptions, DefaultValueForInvalidUtf8};
+
+/// THIS FUNCTION IS COMMON, MODIFIED BY ARAS
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let testdata = arrow::util::test_util::parquet_test_data();
@@ -37,8 +50,15 @@ async fn main() -> Result<()> {
     // The metadata could be cached in other places, this example only shows how to read
     let metadata = file.get_metadata(None).await?;
 
+    // By default validation is not skipped
+    let skip_validation = UnsafeFlag::new();
+    let options = ArrowReaderOptions::new().with_column_value_decoder_options(
+        ColumnValueDecoderOptions::new(skip_validation, DefaultValueForInvalidUtf8::None),
+    );
+
     for rg in metadata.row_groups() {
-        let mut rowgroup = InMemoryRowGroup::create(rg.clone(), ProjectionMask::all());
+        let mut rowgroup =
+            InMemoryRowGroup::create(rg.clone(), ProjectionMask::all(), options.clone());
         rowgroup.async_fetch_data(&mut file, None).await?;
         let reader = rowgroup.build_reader(1024, None)?;
 
@@ -98,11 +118,14 @@ impl ChunkReader for ColumnChunkData {
     }
 }
 
+/// THIS STRUCT IS COMMON, MODIFIED BY ARAS
 #[derive(Clone)]
 pub struct InMemoryRowGroup {
     pub metadata: RowGroupMetaData,
     mask: ProjectionMask,
     column_chunks: Vec<Option<Arc<ColumnChunkData>>>,
+    // THIS MEMBER IS ARAS ONLY
+    options: ArrowReaderOptions,
 }
 
 impl RowGroups for InMemoryRowGroup {
@@ -132,16 +155,23 @@ impl RowGroups for InMemoryRowGroup {
 }
 
 impl InMemoryRowGroup {
-    pub fn create(metadata: RowGroupMetaData, mask: ProjectionMask) -> Self {
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
+    pub fn create(
+        metadata: RowGroupMetaData,
+        mask: ProjectionMask,
+        options: ArrowReaderOptions,
+    ) -> Self {
         let column_chunks = metadata.columns().iter().map(|_| None).collect::<Vec<_>>();
 
         Self {
             metadata,
             mask,
             column_chunks,
+            options,
         }
     }
 
+    /// THIS METHOD IS COMMON, MODIFIED BY ARAS
     pub fn build_reader(
         &self,
         batch_size: usize,
@@ -153,7 +183,13 @@ impl InMemoryRowGroup {
             None,
         )?;
 
-        ParquetRecordBatchReader::try_new_with_row_groups(&levels, self, batch_size, selection)
+        ParquetRecordBatchReader::try_new_with_row_groups(
+            &levels,
+            self,
+            batch_size,
+            selection,
+            self.options.clone(),
+        )
     }
 
     /// fetch data from a reader in sync mode

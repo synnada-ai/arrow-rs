@@ -1,3 +1,10 @@
+# This file contains both Apache Software Foundation (ASF) licensed code as
+# well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+# extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+# claims copyright only for Synnada, Inc. extensions. The license notice
+# applicable to non-Synnada sections of the file is given below.
+# --
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -86,7 +93,7 @@ arrow = { workspace = true, features = ["ipc", "test_utils", "prettyprint", "jso
 tokio = { version = "1.0", default-features = false, features = ["macros", "rt-multi-thread", "io-util", "fs"] }
 rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "thread_rng"] }
 object_store = { git = "https://github.com/synnada-ai/arrow-rs-object-store.git", default-features = false, features = ["azure", "fs"] }
-sysinfo = { version = "0.34.0", default-features = false, features = ["system"] }
+sysinfo = { version = "0.35.0", default-features = false, features = ["system"] }
 
 [package.metadata.docs.rs]
 all-features = true
@@ -237,6 +244,12 @@ harness = false
 
 [[bench]]
 name = "row_selector"
+harness = false
+required-features = ["arrow"]
+
+# THIS BENCH IS ARAS ONLY
+[[bench]]
+name = "invalid_utf8_read"
 harness = false
 required-features = ["arrow"]
 

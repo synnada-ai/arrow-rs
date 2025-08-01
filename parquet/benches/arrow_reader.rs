@@ -1,3 +1,10 @@
+// This file contains both Apache Software Foundation (ASF) licensed code as
+// well as Synnada, Inc. extensions. Changes that constitute Synnada, Inc.
+// extensions are available in the SYNNADA-CONTRIBUTIONS.txt file. Synnada, Inc.
+// claims copyright only for Synnada, Inc. extensions. The license notice
+// applicable to non-Synnada sections of the file is given below.
+// --
+//
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -40,6 +47,9 @@ use parquet::{
 use rand::distr::uniform::SampleUniform;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::{collections::VecDeque, sync::Arc};
+
+// THESE IMPORTS ARE ARAS ONLY
+use parquet::arrow::ColumnValueDecoderOptions;
 
 fn build_test_schema() -> SchemaDescPtr {
     use parquet::schema::{parser::parse_message_type, types::SchemaDescriptor};
@@ -633,15 +643,20 @@ fn create_f16_by_bytes_reader(
     }
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_decimal_by_bytes_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
     let physical_type = column_desc.physical_type();
     match physical_type {
-        Type::BYTE_ARRAY => {
-            make_byte_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
-        }
+        Type::BYTE_ARRAY => make_byte_array_reader(
+            Box::new(page_iterator),
+            column_desc,
+            None,
+            ColumnValueDecoderOptions::default(),
+        )
+        .unwrap(),
         Type::FIXED_LEN_BYTE_ARRAY => {
             make_fixed_len_byte_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
         }
@@ -656,27 +671,49 @@ fn create_fixed_len_byte_array_reader(
     make_fixed_len_byte_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_byte_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
-    make_byte_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
+    make_byte_array_reader(
+        Box::new(page_iterator),
+        column_desc,
+        None,
+        ColumnValueDecoderOptions::default(),
+    )
+    .unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_byte_view_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
-    make_byte_view_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
+    make_byte_view_array_reader(
+        Box::new(page_iterator),
+        column_desc,
+        None,
+        ColumnValueDecoderOptions::default(),
+    )
+    .unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_string_view_byte_array_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
 ) -> Box<dyn ArrayReader> {
-    make_byte_view_array_reader(Box::new(page_iterator), column_desc, None).unwrap()
+    make_byte_view_array_reader(
+        Box::new(page_iterator),
+        column_desc,
+        None,
+        ColumnValueDecoderOptions::default(),
+    )
+    .unwrap()
 }
 
+/// THIS METHOD IS COMMON, MODIFIED BY ARAS
 fn create_string_byte_array_dictionary_reader(
     page_iterator: impl PageIterator + 'static,
     column_desc: ColumnDescPtr,
@@ -684,8 +721,13 @@ fn create_string_byte_array_dictionary_reader(
     use parquet::arrow::array_reader::make_byte_array_dictionary_reader;
     let arrow_type = DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8));
 
-    make_byte_array_dictionary_reader(Box::new(page_iterator), column_desc, Some(arrow_type))
-        .unwrap()
+    make_byte_array_dictionary_reader(
+        Box::new(page_iterator),
+        column_desc,
+        Some(arrow_type),
+        ColumnValueDecoderOptions::default(),
+    )
+    .unwrap()
 }
 
 fn create_string_list_reader(
