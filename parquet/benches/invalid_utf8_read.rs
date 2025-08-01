@@ -138,9 +138,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("invalid_with_null", |b| {
         b.iter(|| {
-            let mut reader = prepare_reader(&invalid_file, DefaultValueForInvalidUtf8::Null, false);
+            let reader = prepare_reader(&invalid_file, DefaultValueForInvalidUtf8::Null, false);
             // Just consume all batches without collecting
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
@@ -148,13 +148,13 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("invalid_with_default_value", |b| {
         b.iter(|| {
-            let mut reader = prepare_reader(
+            let reader = prepare_reader(
                 &invalid_file,
                 DefaultValueForInvalidUtf8::Default("invalid".to_string()),
                 false,
             );
             // Just consume all batches without collecting
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
@@ -163,9 +163,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     // Baseline: pure binary read without UTF-8 conversion
     c.bench_function("valid_binary_baseline", |b| {
         b.iter(|| {
-            let mut reader = prepare_binary_reader(&valid_file);
+            let reader = prepare_binary_reader(&valid_file);
             // Just consume all batches
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
@@ -173,9 +173,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("valid_with_null", |b| {
         b.iter(|| {
-            let mut reader = prepare_reader(&valid_file, DefaultValueForInvalidUtf8::Null, false);
+            let reader = prepare_reader(&valid_file, DefaultValueForInvalidUtf8::Null, false);
             // Just consume all batches
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
@@ -183,13 +183,13 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("valid_with_default_value", |b| {
         b.iter(|| {
-            let mut reader = prepare_reader(
+            let reader = prepare_reader(
                 &valid_file,
                 DefaultValueForInvalidUtf8::Default("invalid".to_string()),
                 false,
             );
             // Just consume all batches
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
@@ -197,9 +197,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("valid_with_none", |b| {
         b.iter(|| {
-            let mut reader = prepare_reader(&valid_file, DefaultValueForInvalidUtf8::None, false);
+            let reader = prepare_reader(&valid_file, DefaultValueForInvalidUtf8::None, false);
             // Just consume all batches
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
@@ -207,9 +207,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("valid_with_skip", |b| {
         b.iter(|| {
-            let mut reader = prepare_reader(&valid_file, DefaultValueForInvalidUtf8::None, true);
+            let reader = prepare_reader(&valid_file, DefaultValueForInvalidUtf8::None, true);
             // Just consume all batches
-            while let Some(batch) = reader.next() {
+            for batch in reader {
                 let _ = black_box(batch.unwrap());
             }
         });
