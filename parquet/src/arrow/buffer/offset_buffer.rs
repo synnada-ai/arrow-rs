@@ -148,44 +148,26 @@ impl<I: OffsetSizeTrait> OffsetBuffer<I> {
         non_null_mask: &[bool],
     ) -> Result<Vec<bool>> {
         let mut non_null_mask_partial = Vec::with_capacity(keys.len());
-        let mut skipped = 0;
-        let mut offset_indexes = HashMap::with_capacity(keys.len());
 
         for key in keys.iter() {
             let index = key.as_usize();
 
-            let offset_index = if let Some(offset_index) = offset_indexes.get(&index) {
-                if !non_null_mask[index] {
-                    non_null_mask_partial.push(false);
-                    continue;
-                } else {
-                    non_null_mask_partial.push(true);
-                    *offset_index
-                }
-            } else {
-                debug_assert!(index < non_null_mask.len());
-                if !non_null_mask[index] {
-                    non_null_mask_partial.push(false);
-                    skipped += 1;
-                    offset_indexes.insert(index, usize::MAX);
-                    continue;
-                } else {
-                    debug_assert!(index >= skipped);
-                    let offset_index = index - skipped;
-                    offset_indexes.insert(index, offset_index);
-                    non_null_mask_partial.push(true);
-                    offset_index
-                }
-            };
-
-            if offset_index + 1 >= dict_offsets.len() {
-                return Err(general_err!(
-                    "dictionary key beyond bounds of dictionary: 0..{}",
-                    dict_offsets.len().saturating_sub(1)
-                ));
+            debug_assert!(index < non_null_mask.len());
+            if !non_null_mask[index] {
+                non_null_mask_partial.push(false);
+                continue;
             }
-            let start_offset = dict_offsets[offset_index].as_usize();
-            let end_offset = dict_offsets[offset_index + 1].as_usize();
+
+            non_null_mask_partial.push(true);
+
+            if index + 1 >= dict_offsets.len() {
+                return Err(general_err!(
+                "dictionary key beyond bounds of dictionary: 0..{}",
+                dict_offsets.len().saturating_sub(1)
+            ));
+            }
+            let start_offset = dict_offsets[index].as_usize();
+            let end_offset = dict_offsets[index + 1].as_usize();
 
             // Dictionary values are verified when decoding dictionary page
             self.try_push(&dict_values[start_offset..end_offset], false)?;
