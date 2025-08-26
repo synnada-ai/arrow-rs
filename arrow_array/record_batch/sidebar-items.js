@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CHECKPOINT_MESSAGE","INTERMEDIATE_NODE_GENERATED_WATERMARK","NORMAL_RECORD_BATCH","SOURCE_GENERATED_WATERMARK"],"struct":["RecordBatch","RecordBatchIterator","RecordBatchOptions"],"trait":["RecordBatchReader","RecordBatchWriter"]};

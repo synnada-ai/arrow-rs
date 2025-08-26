@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DefaultValueForInvalidUtf8"],"mod":["delta_byte_array","dictionary_index"],"struct":["ColumnValueDecoderOptions"]};
