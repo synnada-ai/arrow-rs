@@ -46,10 +46,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: Install python dev
-        run: |
-          apt update
-          apt install -y libpython3.11-dev
       - name: Setup Rust toolchain
         uses: ./.github/actions/setup-builder
         with:
